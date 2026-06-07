@@ -346,70 +346,43 @@ function update() {
 
   let level, label, detail;
 
+  // Unified EV approach:
+  // EV(draw) - EV(stop) = (1-p)*avgGain - p*S
+  // Breakeven bust rate: p* = avgGain / (avgGain + S)
+  const avgCardGain = hasX2 ? 14 : 7; // avg new card value
+  const seventhBonus = (numCount === 6) ? 15 : 0;
+  const drawGain = avgCardGain + seventhBonus;
+  const breakevenPct = effectiveScore > 0 ? Math.round((drawGain / (drawGain + effectiveScore)) * 100) : 100;
+  const margin = 5; // risk-aversion buffer
+
   if (numCount >= 7) {
     level='safe'; label='7種達成！';
     detail = `得点 <strong>${finalWithBonus}点</strong>（数字${numSum}${hasX2?'×2':''}${modBonus>0?'+'+modBonus:''} ＋ボーナス15）`;
   } else if (numCount === 0) {
     level='safe'; label='引こう'; detail='最初の1枚はバーストしません';
-  } else if (hasX2 && numCount >= 2) {
-    if (numCount >= 3 || effectiveScore >= 30) {
-      level='danger'; label='止め（×2確保）';
-      detail = `×2で<strong>${effectiveScore}点</strong>確定。リスクを取る必要なし`;
-    } else {
-      level='warn'; label='あと1枚だけ';
-      detail = `×2込みで<strong>${effectiveScore}点</strong>。もう1枚で大きく伸びる`;
-    }
   } else if (hasSC) {
-    if (numCount >= 5 && bustPct < 60) {
+    // Second Chance: bust cost ≈ 0, always favors drawing
+    if (numCount >= 5) {
       level='safe'; label='7種狙い[ｾｶﾝﾄﾞﾁｬﾝｽあり]';
-      detail = `バースト${bustPct}%だがSCで1回防御。あと${7-numCount}枚で+15`;
-    } else if (numCount <= 4) {
+      detail = `バースト${bustPct}%でもSCで1回防御。あと${7-numCount}枚で+15`;
+    } else {
       level='safe'; label='引こう[ｾｶﾝﾄﾞﾁｬﾝｽあり]';
-      detail = `バースト${bustPct}%。SCがあるので強気でOK`;
-    } else {
-      level='warn'; label='引いてもOK[ｾｶﾝﾄﾞﾁｬﾝｽあり]';
-      detail = `バースト${bustPct}%は高いがSCで保険あり。現在<strong>${effectiveScore}点</strong>`;
-    }
-  } else if (has0 && has1 && numCount >= 4) {
-    if (numCount >= 6 && bustPct <= 50) {
-      level='safe'; label='7種狙い！';
-      detail = `0・1でバースト要因少。${bustPct}%であと1枚→+15`;
-    } else if (numCount >= 5) {
-      level='warn'; label='狙えるかも';
-      detail = `0・1あり。バースト${bustPct}%、あと${7-numCount}枚で+15`;
-    } else {
-      level='safe'; label='引こう';
-      detail = `0・1でリスク低。バースト${bustPct}%`;
+      detail = `バースト${bustPct}%。SCで保険あるので強気でOK`;
     }
   } else {
-    if (numCount <= 2 && bustPct <= 30) {
-      level='safe'; label='引こう'; detail=`バースト${bustPct}%。まだ安全`;
-    } else if (numCount === 3 && effectiveScore < 25 && bustPct <= 30) {
-      level='safe'; label='引こう'; detail=`${effectiveScore}点・バースト${bustPct}%。もう少しいける`;
-    } else if (numCount === 3 && effectiveScore >= 25) {
-      level='warn'; label = bustPct >= 35 ? '止めが安全' : '微妙…';
-      detail = `${effectiveScore}点・バースト${bustPct}%。${has11||has12?'11/12持ちで危険度↑。':''}止めが堅実`;
-    } else if (numCount === 4) {
-      if (effectiveScore < 20 && bustPct <= 30) {
-        level='warn'; label='引いてもいい'; detail=`${effectiveScore}点とまだ低い。バースト${bustPct}%`;
-      } else {
-        level='danger'; label='止め';
-        detail=`${effectiveScore}点・バースト${bustPct}%。${has11||has12?'11/12が危険。':''}確定を`;
-      }
-    } else if (numCount === 5) {
-      if (effectiveScore < 20 && bustPct <= 35) {
-        level='warn'; label='7種ワンチャン'; detail=`低得点だからリスク取る価値あり。バースト${bustPct}%`;
-      } else {
-        level='danger'; label='止め'; detail=`${effectiveScore}点・バースト${bustPct}%。失うものが大きい`;
-      }
-    } else if (numCount === 6) {
-      if (bustPct <= 40 && effectiveScore <= 30) {
-        level='warn'; label='7種いくか？'; detail=`あと1枚で+15。バースト${bustPct}%、失敗で${effectiveScore}点失う`;
-      } else {
-        level='danger'; label='止め'; detail=`バースト${bustPct}%。${effectiveScore}点を守るべき`;
-      }
+    // EV-based decision
+    const note = `バースト${bustPct}% vs 許容${breakevenPct}%`;
+    const ctx = `（${effectiveScore}点${hasX2?'・×2有':''}${numCount===6?'・あと1枚で+15':''}）`;
+    if (bustPct + margin < breakevenPct) {
+      level='safe'; label='引こう';
+      detail = `${note}　期待値プラス${ctx}`;
+    } else if (bustPct > breakevenPct + margin) {
+      level='danger'; label='止め';
+      detail = `${note}　期待値マイナス${ctx}`;
     } else {
-      level='warn'; label='判断が必要'; detail=`${effectiveScore}点・バースト${bustPct}%`;
+      level='warn';
+      label = numCount === 6 ? '7種いくか？' : '際どい';
+      detail = `${note}　ほぼ五分${ctx}`;
     }
   }
 
