@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FLIP 7 判定ツール</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@500&display=swap');
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root {
+    --bg: #2a2d34;
+    --bg2: #353942;
+    --surface: #32363f;
+    --cream: #f4f1de;
+    --cream-edge: #e8e2c8;
+    --ink: #4a4a4a;
+    --muted: #9aa0ab;
+    --text: #f0f0f0;
+    --accent: #e94560;
+    --safe: #06d6a0;
+    --warn: #ffd166;
+    --danger: #ef476f;
+    --orange: #f5a623;
+    --radius: 14px;
+  }
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: transparent;
+    color: var(--text);
+    min-height: 100vh;
+    padding: 16px;
+    padding-bottom: 40px;
+    max-width: 560px;
+    margin: 0 auto;
+  }
+  .logo { text-align: center; margin-bottom: 4px; }
+  .logo-flip {
+    font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 30px;
+    color: var(--cream); letter-spacing: 1px;
+  }
+  .logo-7 {
+    display: inline-block; background: var(--accent); color: var(--cream);
+    font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 24px;
+    width: 34px; height: 34px; line-height: 34px; border-radius: 8px;
+    transform: rotate(8deg); margin-left: 4px; box-shadow: 0 3px 0 #b3243f;
+  }
+  .logo-advisor {
+    font-family: 'Fredoka', sans-serif; font-weight: 500; font-size: 14px;
+    color: var(--cream); letter-spacing: 1px; vertical-align: middle; margin-left: 6px;
+  }
+  .subtitle { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 18px; }
+
+  .wrapper {
+    background: var(--surface); border-radius: var(--radius); padding: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.3);
+  }
+  .wrapper hr { border: none; border-top: 1px solid #4a4f5a; margin: 14px 0; }
+  .section {
+    margin-bottom: 0;
+  }
+  .section-title {
+    font-size: 13px; font-weight: 700; color: var(--muted); margin-bottom: 12px;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .section-title .step {
+    background: var(--accent); color: #fff; font-size: 12px; font-weight: 700;
+    width: 22px; height: 22px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+
+  .num-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; }
+  @media (max-width: 380px) { .num-grid { grid-template-columns: repeat(4, 1fr); } }
+
+  .num-card {
+    position: relative; aspect-ratio: 3/2;
+    background: linear-gradient(160deg, var(--cream) 0%, var(--cream-edge) 100%);
+    border: 2px solid rgba(0,0,0,.08); border-radius: 9px; cursor: pointer;
+    transition: transform .12s, box-shadow .12s;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    user-select: none; -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 2px 4px rgba(0,0,0,.25); overflow: hidden;
+  }
+  .num-card::before {
+    content: ''; position: absolute; inset: 4px; border: 1.5px solid currentColor;
+    border-radius: 5px; opacity: .35; pointer-events: none;
+  }
+  .num-card .digit {
+    font-family: 'Fredoka', sans-serif; font-weight: 700;
+    font-size: clamp(16px, 5vw, 22px); line-height: 1; color: inherit;
+    text-shadow: 1px 1px 0 rgba(255,255,255,.6);
+  }
+  .num-card .word {
+    font-family: 'Fredoka', sans-serif; font-size: 8px; letter-spacing: .5px;
+    color: var(--ink); margin-top: 2px; opacity: .65; display: none;
+  }
+  .num-card:active { transform: scale(0.92); }
+  .num-card.active {
+    box-shadow: inset 0 0 0 4px var(--accent), 0 2px 4px rgba(0,0,0,.25);
+  }
+  .num-card.active::before { border-color: var(--accent); opacity: .6; }
+  .num-card.active::after {
+    content: '✓'; position: absolute; top: 2px; right: 4px;
+    color: var(--accent); font-weight: 900; font-size: 13px;
+  }
+
+  .special-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; }
+  @media (max-width: 380px) { .special-grid { grid-template-columns: repeat(4, 1fr); } }
+  .spec-card {
+    position: relative; aspect-ratio: 3/2; border-radius: 9px; cursor: pointer;
+    transition: transform .12s, box-shadow .12s; user-select: none;
+    -webkit-tap-highlight-color: transparent; text-align: center;
+    border: 2px solid rgba(0,0,0,.12); box-shadow: 0 2px 4px rgba(0,0,0,.25);
+    font-family: 'Fredoka', sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    overflow: hidden; padding: 2px;
+  }
+  .spec-card::before {
+    content: ''; position: absolute; inset: 4px; border: 1.5px solid rgba(0,0,0,.18);
+    border-radius: 5px; pointer-events: none;
+  }
+  .spec-card .ico { font-size: clamp(15px, 5vw, 20px); line-height: 1; }
+  .spec-card .lbl { font-size: 9px; font-weight: 700; line-height: 1.1; }
+  .spec-card .sub { font-family:'Noto Sans JP'; font-size: 7px; opacity:.7; line-height: 1.1; }
+  .spec-card:active { transform: scale(0.92); }
+  .spec-card.active { box-shadow: inset 0 0 0 4px var(--accent), 0 2px 4px rgba(0,0,0,.25); }
+  .spec-card.active::before { border-color: var(--accent); opacity: .5; }
+  .spec-card.active::after { content:'✓'; position:absolute; top:1px; right:4px; font-size:12px; font-weight:900; }
+  .spec-card.mod { background: linear-gradient(160deg, #f7b955, #f5a623); color: #6b3e00; }
+  .spec-card.f3 { background: linear-gradient(160deg, #fff95c, #f9ed4e); color: #6b6300; }
+  .spec-card.fc { background: linear-gradient(160deg, #9bdcf0, #6ec6e0); color: #00485c; }
+  .spec-card.sc { background: linear-gradient(160deg, #f9d5e2, #f4bfcf); color: #b05570; }
+
+  .hand-display { display: flex; flex-wrap: wrap; gap: 6px; min-height: 38px; align-items: center; }
+  .hand-chip {
+    font-family: 'DM Mono', monospace; font-size: 13px; border-radius: 6px; padding: 4px 10px;
+    background: var(--bg2); border: 1px solid #4a4f5a;
+  }
+  .hand-chip.num { font-weight:700; }
+  .hand-chip.mod { border-color: var(--orange); color: var(--orange); }
+  .hand-chip.act { border-color: var(--warn); color: var(--warn); }
+  .hand-empty { color: var(--muted); font-size: 13px; }
+
+  .verdict-box {
+    border-radius: var(--radius); padding: 18px 14px; text-align: center;
+    margin-bottom: 14px; border: 2px solid transparent; transition: all .2s;
+  }
+  .verdict-box.safe { background: #06d6a015; border-color: var(--safe); }
+  .verdict-box.warn { background: #ffd16615; border-color: var(--warn); }
+  .verdict-box.danger { background: #ef476f15; border-color: var(--danger); }
+  .verdict-box.neutral { background: var(--surface); border-color: #444; }
+  .verdict-hand {
+    font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted);
+    margin-bottom: 8px; letter-spacing: .5px;
+  }
+  .verdict-label { font-size: 26px; font-weight: 900; letter-spacing: 1px; }
+  .verdict-box.safe .verdict-label { color: var(--safe); }
+  .verdict-box.warn .verdict-label { color: var(--warn); }
+  .verdict-box.danger .verdict-label { color: var(--danger); }
+  .verdict-box.neutral .verdict-label { color: var(--muted); }
+  .verdict-detail { font-size: 13px; color: var(--muted); margin-top: 7px; line-height: 1.65; }
+  .verdict-detail strong { color: var(--text); }
+
+  .stats-row { display: flex; gap: 8px; margin-top: 12px; justify-content: center; flex-wrap: wrap; }
+  .stat { background: var(--bg2); border-radius: 9px; padding: 8px 16px; text-align: center; min-width: 76px; }
+  .stat-val { font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 500; }
+  .stat-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  .reset-btn {
+    display: block; width: 100%; padding: 13px; background: var(--bg2);
+    border: 2px solid #4a4f5a; color: var(--muted); font-family: 'Noto Sans JP';
+    font-size: 14px; font-weight: 700; border-radius: var(--radius); cursor: pointer;
+    margin-bottom: 14px; -webkit-tap-highlight-color: transparent;
+  }
+  .reset-btn:active { background: #2a2e36; }
+
+  .score-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .score-total { font-family: 'DM Mono', monospace; font-size: 30px; font-weight: 500; color: var(--accent); }
+  .score-input-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .score-input {
+    flex: 1; background: var(--bg2); border: 2px solid #444; color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 16px; padding: 11px; border-radius: 9px;
+    outline: none; text-align: center;
+  }
+  .score-input:focus { border-color: var(--accent); }
+  .score-add-btn {
+    background: var(--accent); border: none; color: #fff; font-family: 'Noto Sans JP';
+    font-size: 14px; font-weight: 700; padding: 11px 20px; border-radius: 9px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .score-sub { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .score-sub span { font-size:11px; color:var(--muted); }
+  .score-clear { background:none; border:none; color:var(--muted); font-size:11px; cursor:pointer; text-decoration:underline; }
+  .score-log { display: flex; flex-wrap: wrap; gap: 5px; max-height: 70px; overflow-y: auto; }
+  .score-entry {
+    font-family: 'DM Mono', monospace; font-size: 12px; background: var(--bg2);
+    border-radius: 5px; padding: 3px 9px; color: var(--muted);
+  }
+  .score-entry.positive { color: var(--safe); }
+  .score-entry.zero { color: var(--danger); }
+</style>
+</head>
+<body>
+
+<div class="wrapper">
+
+<div class="logo"><span class="logo-flip">FLIP</span><span class="logo-7">7</span><span class="logo-advisor"> ADVISOR</span></div>
+<p class="subtitle">引いたカードをタップ → 引く/止めを判定</p>
+
+<div class="section">
+  <div class="section-title"><span class="step">1</span>数字カード（引いた分をタップ）</div>
+  <div class="num-grid" id="numGrid"></div>
+  <hr>
+  <div class="section-title"><span class="step">2</span>修正・アクションカード</div>
+  <div class="special-grid" id="specialGrid"></div>
+</div>
+
+<hr>
+
+<div class="verdict-box neutral" id="verdict">
+  <div class="verdict-label">—</div>
+  <div class="verdict-detail">カードを選んでください</div>
+</div>
+
+<button class="reset-btn" onclick="resetRound()">↺ ラウンドリセット</button>
+
+<hr>
+
+<div class="section">
+  <div class="score-header">
+    <div class="section-title" style="margin:0">累計スコア</div>
+    <div class="score-total" id="totalScore">0</div>
+  </div>
+  <div class="score-input-row">
+    <input type="number" class="score-input" id="scoreInput" placeholder="今回の得点" inputmode="numeric">
+    <button class="score-add-btn" onclick="addScore()">加算</button>
+  </div>
+  <div class="score-sub">
+    <span>ラウンド履歴（200点突破で緑）</span>
+    <button class="score-clear" onclick="clearScores()">クリア</button>
+  </div>
+  <div class="score-log" id="scoreLog"></div>
+</div>
+
+</div>
+
+<script>
+let selectedNumbers = new Set();
+let selectedSpecials = new Set();
+let scores = [];
+const DECK_TOTAL = 94;
+
+const NUM_COLORS = {
+  0:'#e8418f', 1:'#9c8d80', 2:'#f2c14e', 3:'#f08878', 4:'#2ec4c4',
+  5:'#5aa832', 6:'#7b5cd6', 7:'#e8604c', 8:'#bcd16a', 9:'#e8853c',
+  10:'#e23b3b', 11:'#2d7fd6', 12:'#6f5f52'
+};
+const NUM_WORDS = ['ZERO','ONE','TWO','THREE','FOUR','FIVE','SIX','SEVEN','EIGHT','NINE','TEN','ELEVEN','TWELVE'];
+
+const SPECIALS = [
+  {id:'×2', cls:'mod', ico:'×2', lbl:'', sub:'2倍'},
+  {id:'+2', cls:'mod', ico:'+2', lbl:'', sub:''},
+  {id:'+4', cls:'mod', ico:'+4', lbl:'', sub:''},
+  {id:'+6', cls:'mod', ico:'+6', lbl:'', sub:''},
+  {id:'+8', cls:'mod', ico:'+8', lbl:'', sub:''},
+  {id:'+10', cls:'mod', ico:'+10', lbl:'', sub:''},
+  {id:'F3', cls:'f3', ico:'🃏', lbl:'FLIP 3', sub:'3枚引く'},
+  {id:'FC', cls:'fc', ico:'🔒', lbl:'FREEZE', sub:'強制パス'},
+  {id:'SC', cls:'sc', ico:'❤️', lbl:'2nd CHANCE', sub:'脱落防止'},
+];
+
+const numGrid = document.getElementById('numGrid');
+for (let i = 0; i <= 12; i++) {
+  const c = document.createElement('div');
+  c.className = 'num-card';
+  const col = NUM_COLORS[i];
+  if (col === 'rainbow') {
+    c.innerHTML = `<span class="digit" style="background:linear-gradient(90deg,#e8418f,#e8853c,#f2c14e,#3cb371,#2d7fd6,#7b5cd6);-webkit-background-clip:text;background-clip:text;color:transparent;">${i}</span><span class="word">${NUM_WORDS[i]}</span>`;
+    c.style.color = '#888';
+  } else {
+    c.style.color = col;
+    c.innerHTML = `<span class="digit">${i}</span><span class="word">${NUM_WORDS[i]}</span>`;
+  }
+  c.onclick = () => toggleNumber(i, c);
+  numGrid.appendChild(c);
+}
+
+const specGrid = document.getElementById('specialGrid');
+SPECIALS.forEach(s => {
+  const c = document.createElement('div');
+  c.className = 'spec-card ' + s.cls;
+  c.innerHTML = `<span class="ico">${s.ico}</span>${s.lbl?`<span class="lbl">${s.lbl}</span>`:''}${s.sub?`<span class="sub">${s.sub}</span>`:''}`;
+  c.onclick = () => toggleSpecial(s.id, c);
+  specGrid.appendChild(c);
+});
+
+function toggleNumber(n, el) {
+  if (selectedNumbers.has(n)) { selectedNumbers.delete(n); el.classList.remove('active'); }
+  else { selectedNumbers.add(n); el.classList.add('active'); }
+  update();
+}
+function toggleSpecial(s, el) {
+  if (selectedSpecials.has(s)) { selectedSpecials.delete(s); el.classList.remove('active'); }
+  else { selectedSpecials.add(s); el.classList.add('active'); }
+  update();
+}
+
+function update() {
+  if (selectedNumbers.size === 0 && selectedSpecials.size === 0) {
+    setVerdict('neutral', '—', 'カードを選んでください', {}, '');
+    return;
+  }
+
+  let handParts = [];
+  const sortedNums = [...selectedNumbers].sort((a,b)=>a-b);
+  if (sortedNums.length) handParts.push(sortedNums.join(', '));
+  selectedSpecials.forEach(s => {
+    const meta = SPECIALS.find(x=>x.id===s);
+    handParts.push(meta.lbl || meta.ico);
+  });
+  const handStr = '手札：' + handParts.join(' / ');
+
+  const nums = [...selectedNumbers];
+  const numCount = nums.length;
+  const numSum = nums.reduce((a,b)=>a+b,0);
+  const has0 = selectedNumbers.has(0);
+  const has1 = selectedNumbers.has(1);
+  const has11 = selectedNumbers.has(11);
+  const has12 = selectedNumbers.has(12);
+  const hasX2 = selectedSpecials.has('×2');
+  const hasSC = selectedSpecials.has('SC');
+
+  let bustCards = 0;
+  nums.forEach(v => { if (v >= 2) bustCards += (v - 1); });
+
+  const totalHand = numCount + selectedSpecials.size;
+  const remaining = DECK_TOTAL - totalHand;
+  const bustPct = remaining > 0 ? Math.round((bustCards / remaining) * 100) : 0;
+
+  let modBonus = 0;
+  ['+2','+4','+6','+8','+10'].forEach(s => { if (selectedSpecials.has(s)) modBonus += parseInt(s); });
+  const baseScore = hasX2 ? numSum * 2 : numSum;
+  const effectiveScore = baseScore + modBonus;
+  const sevenBonus = numCount >= 7 ? 15 : 0;
+  const finalWithBonus = effectiveScore + sevenBonus;
+
+  let level, label, detail;
+
+  if (numCount >= 7) {
+    level='safe'; label='7種達成！';
+    detail = `得点 <strong>${finalWithBonus}点</strong>（数字${numSum}${hasX2?'×2':''}${modBonus>0?'+'+modBonus:''} ＋ボーナス15）`;
+  } else if (numCount === 0) {
+    level='safe'; label='引こう'; detail='最初の1枚はバーストしません';
+  } else if (hasX2 && numCount >= 2) {
+    if (numCount >= 3 || effectiveScore >= 30) {
+      level='danger'; label='止め（×2確保）';
+      detail = `×2で<strong>${effectiveScore}点</strong>確定。リスクを取る必要なし`;
+    } else {
+      level='warn'; label='あと1枚だけ';
+      detail = `×2込みで<strong>${effectiveScore}点</strong>。もう1枚で大きく伸びる`;
+    }
+  } else if (hasSC) {
+    if (numCount >= 5 && bustPct < 60) {
+      level='safe'; label='7種狙い[ｾｶﾝﾄﾞﾁｬﾝｽあり]';
+      detail = `バースト${bustPct}%だがSCで1回防御。あと${7-numCount}枚で+15`;
+    } else if (numCount <= 4) {
+      level='safe'; label='引こう[ｾｶﾝﾄﾞﾁｬﾝｽあり]';
+      detail = `バースト${bustPct}%。SCがあるので強気でOK`;
+    } else {
+      level='warn'; label='引いてもOK[ｾｶﾝﾄﾞﾁｬﾝｽあり]';
+      detail = `バースト${bustPct}%は高いがSCで保険あり。現在<strong>${effectiveScore}点</strong>`;
+    }
+  } else if (has0 && has1 && numCount >= 4) {
+    if (numCount >= 6 && bustPct <= 50) {
+      level='safe'; label='7種狙い！';
+      detail = `0・1でバースト要因少。${bustPct}%であと1枚→+15`;
+    } else if (numCount >= 5) {
+      level='warn'; label='狙えるかも';
+      detail = `0・1あり。バースト${bustPct}%、あと${7-numCount}枚で+15`;
+    } else {
+      level='safe'; label='引こう';
+      detail = `0・1でリスク低。バースト${bustPct}%`;
+    }
+  } else {
+    if (numCount <= 2 && bustPct <= 30) {
+      level='safe'; label='引こう'; detail=`バースト${bustPct}%。まだ安全`;
+    } else if (numCount === 3 && effectiveScore < 25 && bustPct <= 30) {
+      level='safe'; label='引こう'; detail=`${effectiveScore}点・バースト${bustPct}%。もう少しいける`;
+    } else if (numCount === 3 && effectiveScore >= 25) {
+      level='warn'; label = bustPct >= 35 ? '止めが安全' : '微妙…';
+      detail = `${effectiveScore}点・バースト${bustPct}%。${has11||has12?'11/12持ちで危険度↑。':''}止めが堅実`;
+    } else if (numCount === 4) {
+      if (effectiveScore < 20 && bustPct <= 30) {
+        level='warn'; label='引いてもいい'; detail=`${effectiveScore}点とまだ低い。バースト${bustPct}%`;
+      } else {
+        level='danger'; label='止め';
+        detail=`${effectiveScore}点・バースト${bustPct}%。${has11||has12?'11/12が危険。':''}確定を`;
+      }
+    } else if (numCount === 5) {
+      if (effectiveScore < 20 && bustPct <= 35) {
+        level='warn'; label='7種ワンチャン'; detail=`低得点だからリスク取る価値あり。バースト${bustPct}%`;
+      } else {
+        level='danger'; label='止め'; detail=`${effectiveScore}点・バースト${bustPct}%。失うものが大きい`;
+      }
+    } else if (numCount === 6) {
+      if (bustPct <= 40 && effectiveScore <= 30) {
+        level='warn'; label='7種いくか？'; detail=`あと1枚で+15。バースト${bustPct}%、失敗で${effectiveScore}点失う`;
+      } else {
+        level='danger'; label='止め'; detail=`バースト${bustPct}%。${effectiveScore}点を守るべき`;
+      }
+    } else {
+      level='warn'; label='判断が必要'; detail=`${effectiveScore}点・バースト${bustPct}%`;
+    }
+  }
+
+  setVerdict(level, label, detail, { numCount, effectiveScore, bustPct }, handStr);
+}
+
+function setVerdict(level, label, detail, stats, handStr) {
+  const vb = document.getElementById('verdict');
+  vb.className = 'verdict-box ' + level;
+  vb.innerHTML = `
+    ${handStr ? `<div class="verdict-hand">${handStr}</div>` : ''}
+    <div class="verdict-label">${label}</div>
+    <div class="verdict-detail">${detail}</div>
+    ${stats.numCount !== undefined ? `
+    <div class="stats-row">
+      <div class="stat"><div class="stat-val">${stats.numCount}</div><div class="stat-lbl">枚数</div></div>
+      <div class="stat"><div class="stat-val">${stats.effectiveScore}</div><div class="stat-lbl">得点</div></div>
+      <div class="stat"><div class="stat-val">${stats.bustPct}%</div><div class="stat-lbl">バースト率</div></div>
+    </div>` : ''}
+  `;
+}
+
+function resetRound() {
+  selectedNumbers.clear();
+  selectedSpecials.clear();
+  document.querySelectorAll('.num-card, .spec-card').forEach(b => b.classList.remove('active'));
+  update();
+}
+
+function addScore() {
+  const input = document.getElementById('scoreInput');
+  const val = parseInt(input.value);
+  if (isNaN(val)) return;
+  scores.push(val);
+  input.value = '';
+  renderScores();
+}
+function clearScores() { scores = []; renderScores(); }
+function renderScores() {
+  const total = scores.reduce((a,b)=>a+b,0);
+  const t = document.getElementById('totalScore');
+  t.textContent = total;
+  t.style.color = total >= 200 ? 'var(--safe)' : 'var(--accent)';
+  document.getElementById('scoreLog').innerHTML = scores.map((s,i) =>
+    `<span class="score-entry ${s>0?'positive':'zero'}">R${i+1}: ${s>0?'+':''}${s}</span>`).join('');
+}
+document.getElementById('scoreInput').addEventListener('keydown', e => { if (e.key==='Enter') addScore(); });
+</script>
+</body>
+</html>
