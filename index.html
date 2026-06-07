@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Public Tools</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Arial', sans-serif;
+    background: #1a1d23;
+    color: #f0f0f0;
+    min-height: 100vh;
+    padding: 40px 16px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 1.8em;
+    margin-bottom: 40px;
+    color: #f0f0f0;
+    letter-spacing: 2px;
+  }
+  .category {
+    max-width: 500px;
+    margin: 0 auto 32px;
+    background: #2a2d34;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+  .category-header {
+    background: #353942;
+    padding: 16px 24px;
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #9aa0ab;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .category-body {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .tool-btn {
+    display: block;
+    text-decoration: none;
+    background: #32363f;
+    border: 2px solid #4a4f5a;
+    border-radius: 12px;
+    padding: 18px 24px;
+    color: #f0f0f0;
+    font-size: 1.05em;
+    font-weight: bold;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .tool-btn:hover {
+    background: #3d4250;
+    border-color: #6a7080;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  .tool-btn:active { transform: translateY(0); }
+  .tool-btn .ico { font-size: 1.4em; }
+  .tool-btn .desc { font-size: 0.75em; color: #9aa0ab; font-weight: normal; margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<h1>🛠 Public Tools</h1>
+
+<div class="category">
+  <div class="category-header">🎲 ボードゲーム</div>
+  <div class="category-body">
+    <a class="tool-btn" href="BoardGame/flip7-advisor.html">
+      <span class="ico">🃏</span>
+      <div>
+        <div>FLIP 7 アドバイザー</div>
+        <div class="desc">引く／止めを判定するツール</div>
+      </div>
+    </a>
+    <a class="tool-btn" href="BoardGame/shadow_raiders_dice_v2.html">
+      <span class="ico">⚔️</span>
+      <div>
+        <div>シャドウレイダーズ ダイス</div>
+        <div class="desc">6面＆4面ダイスロールツール</div>
+      </div>
+    </a>
+  </div>
+</div>
+
+</body>
+</html>
