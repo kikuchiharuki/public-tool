@@ -296,7 +296,10 @@ SPECIALS.forEach(s => {
 
 function toggleNumber(n, el) {
   if (selectedNumbers.has(n)) { selectedNumbers.delete(n); el.classList.remove('active'); }
-  else { selectedNumbers.add(n); el.classList.add('active'); }
+  else {
+    if (selectedNumbers.size >= 7) return;
+    selectedNumbers.add(n); el.classList.add('active');
+  }
   update();
 }
 function toggleSpecial(s, el) {
@@ -369,24 +372,63 @@ function update() {
       level='safe'; label='引こう[ｾｶﾝﾄﾞﾁｬﾝｽあり]';
       detail = `バースト${bustPct}%。SCで保険あるので強気でOK`;
     }
+  } else if (numCount === 6) {
+    // 7種リーチ - the most exciting situation
+    const sevenScore = effectiveScore + 15 + (hasX2 ? 14 : 7);
+    const note = `バースト${bustPct}%　成功すれば推定<strong>${Math.round(sevenScore)}点</strong>超`;
+    if (bustPct <= 15) {
+      level='safe'; label='7種リーチ！行け！';
+      detail = `${note}<br>この確率なら迷う必要なし。+15ボーナスをもぎ取ろう`;
+    } else if (bustPct <= 25) {
+      level='safe'; label='7種リーチ！いい勝負';
+      detail = `${note}<br>4回中3回は通る。ボーナス狙いの価値あり`;
+    } else if (bustPct <= 35) {
+      level='warn'; label='7種リーチ…一か八か';
+      detail = `${note}<br>失敗で<strong>${effectiveScore}点</strong>消滅。覚悟があるなら熱い1枚`;
+    } else if (bustPct <= 45) {
+      level='warn'; label='7種リーチ…茨の道';
+      detail = `${note}<br>成功率は半分強。${effectiveScore}点を捨てる覚悟があるか？<br>ビハインドなら勝負、リードなら確定を`;
+    } else {
+      level='danger'; label='7種は遠い…得点確保';
+      detail = `バースト${bustPct}%　<strong>${effectiveScore}点</strong>を守るのが賢明<br>ここで飛んだら目も当てられない`;
+    }
   } else {
     // EV-based decision
     const note = `バースト${bustPct}% vs 許容${breakevenPct}%`;
-    const ctx = `（${effectiveScore}点${hasX2?'・×2有':''}${numCount===6?'・あと1枚で+15':''}）`;
+    const evDiff = (1 - bustPct/100) * drawGain - (bustPct/100) * effectiveScore;
+    const evLabel = evDiff >= 0 ? `期待値プラス（${Math.round(evDiff)}点）` : `期待値マイナス（${effectiveScore}点）`;
     if (bustPct + margin < breakevenPct) {
-      level='safe'; label='引こう';
-      detail = `${note}　期待値プラス${ctx}`;
+      const evPts = Math.round(evDiff);
+      if (bustPct <= 10) {
+        level='safe'; label='引こう';
+        detail = `${note}　${evLabel}<br>ほぼノーリスク。迷わず引く`;
+      } else if (bustPct <= 20) {
+        level='safe'; label='引こう';
+        detail = `${note}　${evLabel}<br>まだ余裕あり`;
+      } else {
+        level='safe'; label='引こう';
+        detail = `${note}　${evLabel}`;
+      }
     } else if (bustPct > breakevenPct + margin) {
-      level='danger'; label='止め';
-      detail = `${note}　期待値マイナス${ctx}`;
+      if (bustPct >= 45) {
+        level='danger'; label='止め';
+        detail = `${note}　${evLabel}<br>勝負どころでも厳しい確率${hasX2?'。×2を守ろう':''}`;
+      } else if (bustPct >= 35) {
+        level='danger'; label='止め';
+        detail = `${note}　${evLabel}<br>堅実ラウンドなら確定${hasX2?'（×2の得点を確保）':'。追い上げ中なら覚悟の上で'}`;
+      } else {
+        level='danger'; label='止め（勝負なら可）';
+        detail = `${note}　${evLabel}<br>${hasX2?'×2確保が堅実。':''}通常は確定。ラスト勝負・大差ビハインドなら良い賭け`;
+      }
     } else {
       level='warn';
-      label = numCount === 6 ? '7種いくか？' : '際どい';
-      detail = `${note}　ほぼ五分${ctx}`;
+      label = '際どい';
+      detail = `${note}　${evLabel}<br>ほぼ五分。リードなら止め、ビハインドなら引く`;
     }
   }
 
-  setVerdict(level, label, detail, { numCount, effectiveScore, bustPct }, handStr);
+  const displayScore = numCount >= 7 ? finalWithBonus : effectiveScore;
+  setVerdict(level, label, detail, { numCount, effectiveScore: displayScore, bustPct }, handStr);
 }
 
 function setVerdict(level, label, detail, stats, handStr) {
