@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hello World</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      text-align: center;
+      background: white;
+      padding: 60px 40px;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    h1 {
+      font-size: 3em;
+      color: #667eea;
+      margin-bottom: 20px;
+      animation: fadeIn 1s ease-in;
+    }
+    p {
+      font-size: 1.2em;
+      color: #666;
+      margin-bottom: 30px;
+    }
+    .timestamp {
+      font-size: 0.9em;
+      color: #999;
+      margin-bottom: 20px;
+    }
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      font-size: 1.05em;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #764ba2;
+    }
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>👋 Hello World!</h1>
+    <p>ブラウザで動作するシンプルなデモページです</p>
+    <div class="timestamp" id="timestamp"></div>
+    <button onclick="updateTimestamp()">時刻を更新</button>
+  </div>
+
+  <script>
+    function updateTimestamp() {
+      const now = new Date();
+      document.getElementById('timestamp').textContent =
+        '現在時刻: ' + now.toLocaleString('ja-JP');
+    }
+
+    // 初期表示
+    updateTimestamp();
+  </script>
+</body>
+</html>
