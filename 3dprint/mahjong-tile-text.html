@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>麻雀牌 文字はめ込みSTLツール</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Noto+Serif+JP:wght@400;700;900&family=M+PLUS+1p:wght@400;700;900&family=M+PLUS+Rounded+1c:wght@400;700;900&family=Zen+Kaku+Gothic+New:wght@400;700;900&family=Zen+Old+Mincho:wght@400;700;900&family=Zen+Maru+Gothic:wght@400;700;900&family=Shippori+Mincho:wght@400;700;800&family=Shippori+Antique&family=Sawarabi+Mincho&family=Sawarabi+Gothic&family=Kosugi+Maru&family=Klee+One:wght@400;600&family=Kaisei+Decol:wght@400;700&family=Kaisei+Tokumin:wght@400;700;800&family=Yuji+Syuku&family=Yuji+Boku&family=Yusei+Magic&family=DotGothic16&family=RocknRoll+One&family=Reggae+One&family=Rampart+One&family=Dela+Gothic+One&family=Hachi+Maru+Pop&family=Mochiy+Pop+One&family=Potta+One&family=Kiwi+Maru:wght@400;500&family=Stick&family=Train+One&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  body{font-family:"Hiragino Kaku Gothic ProN",sans-serif;margin:0;display:flex;height:100vh;background:#1d1d1f;color:#eee}
+  #panel{width:360px;padding:14px 16px;overflow-y:auto;background:#2a2a2d;flex-shrink:0}
+  h1{font-size:15px;margin:0 0 2px}
+  .sub{font-size:11px;color:#888;margin-bottom:10px}
+  .step{margin:14px 0 6px;font-size:13px;font-weight:bold;color:#7fd0a0}
+  .step .n{display:inline-block;background:#2a8a55;color:#fff;border-radius:50%;width:18px;height:18px;text-align:center;line-height:18px;font-size:11px;margin-right:6px}
+  #text{width:100%;font-size:30px;text-align:center;padding:8px;background:#18181a;color:#fff;border:2px solid #2a8a55;border-radius:8px}
+  #fontGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-height:280px;overflow-y:auto;padding:2px}
+  .fcard{background:#18181a;border:2px solid #444;border-radius:8px;padding:6px 2px 3px;text-align:center;cursor:pointer}
+  .fcard:hover{border-color:#888}
+  .fcard.sel{border-color:#2a8a55;background:#1d2b22}
+  .fcard .samp{font-size:30px;line-height:1.15;color:#fff;white-space:nowrap;overflow:hidden}
+  .fcard .fname{font-size:9px;color:#999;margin-top:2px;white-space:nowrap;overflow:hidden}
+  label{display:block;font-size:12px;margin:10px 0 3px;color:#bbb}
+  .val{float:right;color:#7fd0a0;font-size:11px}
+  .srow{display:flex;align-items:center;gap:6px}
+  .srow input[type=range]{flex:1}
+  .mb{width:30px;height:26px;flex-shrink:0;background:#3a3a3e;color:#fff;border:1px solid #555;border-radius:5px;font-size:15px;cursor:pointer;padding:0}
+  .mb:hover{background:#4a4a50}
+  select,input[type=color]{width:100%;font-size:13px;padding:6px;background:#18181a;color:#eee;border:1px solid #555;border-radius:5px}
+  input[type=color]{height:32px;padding:2px}
+  .row{display:flex;gap:10px}.row>div{flex:1}
+  .btn{width:100%;margin-top:8px;border:none;color:#fff;font-weight:bold;padding:11px;border-radius:8px;cursor:pointer;font-size:15px}
+  #dl3mf{background:#2a8a55}#dl3mf:hover{background:#33a866}
+  #dlstl{background:#3a3a3e;font-size:13px;padding:8px}#dlstl:hover{background:#4a4a50}
+  #imgbtn{background:#345a8a;font-size:13px;padding:8px}#imgbtn:hover{background:#3f6ea8}
+  .btn:disabled{background:#555;cursor:wait}
+  #dlNote{font-size:11px;color:#999;margin-top:8px;line-height:1.6}
+  #view{flex:1;position:relative;min-width:0}
+  #side{position:absolute;right:14px;top:14px;width:130px;display:flex;flex-direction:column;gap:8px}
+  #face{width:130px;background:#f8f6ef;border-radius:8px;box-shadow:0 2px 10px #000}
+  #summary{background:#26262a;border:1px solid #444;border-radius:8px;padding:8px;font-size:11px;line-height:1.6;color:#ccc;word-break:break-all}
+  #summary b{color:#7fd0a0}
+  #copyBtn{width:100%;margin-top:6px;background:#3a3a3e;color:#eee;border:1px solid #555;border-radius:5px;font-size:11px;padding:4px;cursor:pointer}
+  #copyBtn:hover{background:#4a4a50}
+  #status{position:absolute;left:14px;bottom:10px;font-size:12px;color:#999}
+  #hint{position:absolute;left:14px;top:12px;font-size:11px;color:#777}
+  #overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:10;cursor:pointer}
+  #overlay img{max-width:92%;max-height:92%;border-radius:8px}
+  #overlay .cap{position:absolute;bottom:12px;width:100%;text-align:center;color:#aaa;font-size:12px}
+</style>
+</head>
+<body>
+<div id="panel">
+  <h1>麻雀牌 文字はめ込みSTL</h1>
+  <div class="sub" id="sizeNote"></div>
+
+  <div class="step"><span class="n">0</span>牌のサイズ</div>
+  <select id="tsize">
+    <option value="mleague" selected>Mリーグ公式 28mm（自動卓標準・AMOS BNJ）</option>
+    <option value="tezumi26">手積み標準 26mm</option>
+    <option value="large30">大型 30mm（蘭・見やすい大きめ）</option>
+  </select>
+
+  <div class="step"><span class="n">1</span>文字を入力（2文字までは縦並び）</div>
+  <input id="text" value="中" maxlength="2" placeholder="ここに文字">
+
+  <div class="step"><span class="n">2</span>フォントをクリックして選ぶ</div>
+  <div id="fontGrid"></div>
+
+  <div class="step"><span class="n">3</span>調整</div>
+  <div class="row">
+    <div>
+      <label>方式</label>
+      <select id="mode">
+        <option value="inlay" selected>はめ込み（牌＋文字パーツ）</option>
+        <option value="engrave">彫り込みのみ</option>
+      </select>
+    </div>
+    <div>
+      <label>文字の太さ</label>
+      <select id="weight">
+        <option value="400">標準</option>
+        <option value="700" selected>太字</option>
+        <option value="900">極太</option>
+      </select>
+    </div>
+  </div>
+  <div class="row">
+    <div>
+      <label>ポケット面取り</label>
+      <select id="cham">
+        <option value="on" selected>あり（挿入しやすい）</option>
+        <option value="off">なし（分割印刷向き）</option>
+      </select>
+    </div>
+    <div>
+      <label>上下分割</label>
+      <select id="split">
+        <option value="none" selected>しない（一体）</option>
+        <option value="split">する（表側/裏側）</option>
+      </select>
+    </div>
+  </div>
+  <label>分割位置（表側パーツの厚み） <span class="val" id="splitHV"></span></label>
+  <div class="srow"><button class="mb" data-t="splitH" data-d="-1">−</button><input type="range" id="splitH" min="2" max="6" step="0.5" value="3.5"><button class="mb" data-t="splitH" data-d="1">＋</button></div>
+  <label>文字サイズ <span class="val" id="sizeV"></span></label>
+  <div class="srow"><button class="mb" data-t="size" data-d="-1">−</button><input type="range" id="size" min="30" max="100" value="70"><button class="mb" data-t="size" data-d="1">＋</button></div>
+  <label>ポケット深さ <span class="val" id="depthV"></span></label>
+  <div class="srow"><button class="mb" data-t="depth" data-d="-1">−</button><input type="range" id="depth" min="1.5" max="4" step="0.5" value="2.5"><button class="mb" data-t="depth" data-d="1">＋</button></div>
+  <label>文字の沈み（面からの段差） <span class="val" id="sinkV"></span></label>
+  <div class="srow"><button class="mb" data-t="sink" data-d="-1">−</button><input type="range" id="sink" min="0" max="1.2" step="0.1" value="0.5"><button class="mb" data-t="sink" data-d="1">＋</button></div>
+  <label>はめ込みすきま（片側） <span class="val" id="clearV"></span></label>
+  <div class="srow"><button class="mb" data-t="clear" data-d="-1">−</button><input type="range" id="clear" min="0" max="0.3" step="0.02" value="0.12"><button class="mb" data-t="clear" data-d="1">＋</button></div>
+  <label>上下位置（0=中央揃え） <span class="val" id="offV"></span></label>
+  <div class="srow"><button class="mb" data-t="off" data-d="-1">−</button><input type="range" id="off" min="-30" max="30" value="0"><button class="mb" data-t="off" data-d="1">＋</button></div>
+  <div class="row">
+    <div>
+      <label>磁石ポケット（冷蔵庫用）</label>
+      <select id="mag">
+        <option value="none" selected>なし</option>
+        <option value="on">入れる</option>
+      </select>
+    </div>
+    <div>
+      <label>形状・配置</label>
+      <select id="magShape">
+        <option value="round" selected>円形・4隅</option>
+        <option value="square">角形・2隅（対角）</option>
+      </select>
+    </div>
+  </div>
+  <div id="magRound">
+    <label>円形磁石 径×厚 <span class="val" id="magV"></span></label>
+    <div class="srow"><button class="mb" data-t="magD" data-d="-1">−</button><input type="range" id="magD" min="2" max="12" step="0.5" value="3" title="直径"><button class="mb" data-t="magD" data-d="1">＋</button></div>
+    <div class="srow"><button class="mb" data-t="magT" data-d="-1">−</button><input type="range" id="magT" min="0.5" max="4" step="0.5" value="2" title="厚み"><button class="mb" data-t="magT" data-d="1">＋</button></div>
+  </div>
+  <div id="magSquare" style="display:none">
+    <label>角形磁石 幅×奥行×厚 <span class="val" id="magSV"></span></label>
+    <div class="srow"><button class="mb" data-t="magSW" data-d="-1">−</button><input type="range" id="magSW" min="2" max="14" step="0.5" value="5" title="幅"><button class="mb" data-t="magSW" data-d="1">＋</button></div>
+    <div class="srow"><button class="mb" data-t="magSD" data-d="-1">−</button><input type="range" id="magSD" min="2" max="14" step="0.5" value="5" title="奥行"><button class="mb" data-t="magSD" data-d="1">＋</button></div>
+    <div class="srow"><button class="mb" data-t="magST" data-d="-1">−</button><input type="range" id="magST" min="0.5" max="4" step="0.5" value="2" title="厚み"><button class="mb" data-t="magST" data-d="1">＋</button></div>
+  </div>
+  <div id="magSkinBox" style="display:none">
+    <label>底の残し厚（薄いほど磁力が強い） <span class="val" id="magSkinV"></span></label>
+    <div class="srow"><button class="mb" data-t="magSkin" data-d="-1">−</button><input type="range" id="magSkin" min="0.2" max="1.2" step="0.2" value="0.4"><button class="mb" data-t="magSkin" data-d="1">＋</button></div>
+    <div style="font-size:11px;color:#999;line-height:1.5">薄くすると鋼製プレートが磁石を下に引きつけるので、挿入した磁石がノズルに持って行かれません。冷蔵庫への吸着力も上がります。</div>
+  </div>
+  <label>色（プレビュー用・印刷はフィラメント色）</label>
+  <div class="row">
+    <div><label style="margin:2px 0">本体</label><input type="color" id="body" value="#f5f2e8" list="cols"></div>
+    <div><label style="margin:2px 0">文字</label><input type="color" id="tcol" value="#e67e22" list="cols"></div>
+    <div><label style="margin:2px 0">背面</label><input type="color" id="back" value="#e67e22" list="cols"></div>
+  </div>
+  <datalist id="cols">
+    <option value="#e67e22"><option value="#000000"><option value="#c8c8c8">
+    <option value="#ffffff"><option value="#f5f2e8"><option value="#1f5fbf"><option value="#b71c1c">
+  </datalist>
+
+  <div class="step"><span class="n">4</span>出力</div>
+  <button class="btn" id="dl3mf">3MF出力（色分け済み・推奨）</button>
+  <button class="btn" id="dlstl">STL出力（全ボディ入り）</button>
+  <button class="btn" id="imgbtn">画像で表示（設定値つき・保存なし）</button>
+  <div id="dlNote"><b>3MF</b>は牌と文字パーツが別オブジェクト＋色（1番/2番フィラメント）割当済みで、Bambu Studioで開くだけで切り分け不要。上下分割時は表側パーツが文字面を下にした向きで配置されます。</div>
+</div>
+<div id="view">
+  <div id="side">
+    <canvas id="face"></canvas>
+    <div id="summary"></div>
+  </div>
+  <div id="hint">ドラッグで回転 / ホイールでズーム</div>
+  <div id="status">読み込み中…</div>
+</div>
+<div id="overlay"><img id="shot"><div class="cap">タップ/クリックで閉じる（スクショで共有できます）</div></div>
+
+<script src="https://unpkg.com/d3-array@3.2.4/dist/d3-array.min.js"></script>
+<script src="https://unpkg.com/d3-contour@4.0.2/dist/d3-contour.min.js"></script>
+<script type="importmap">
+{"imports":{
+  "three":"https://unpkg.com/three@0.160.0/build/three.module.js",
+  "manifold-3d":"https://unpkg.com/manifold-3d@2.5.1/manifold.js"
+}}
+</script>
+<script type="module">
+import * as THREE from "three";
+import Module from "manifold-3d";
+const wasm=await Module(); wasm.setup();
+const {Manifold, CrossSection}=wasm;
+
+// ---- 牌サイズ（mm）----
+const SIZES={
+  mleague:{label:"Mリーグ公式 28mm",W:20.5,H:28.0,T:16.5},
+  tezumi26:{label:"手積み標準 26mm",W:19.5,H:26.0,T:16.0},
+  large30:{label:"大型 30mm（蘭）",W:22.0,H:30.0,T:17.0},
+};
+let W,H,T,CW,CH;
+const R=1.5, RES=24, BACK_RATIO=0.25; // 背色は厚みの25%（参考STL実測）
+
+const FONTS = [
+  ["ヒラギノ角ゴ","Hiragino Kaku Gothic ProN"],
+  ["ヒラギノ明朝","Hiragino Mincho ProN"],
+  ["ヒラギノ丸ゴ","Hiragino Maru Gothic ProN"],
+  ["游ゴシック","YuGothic"],
+  ["游明朝","YuMincho"],
+  ["クレー(内蔵)","Klee"],
+  ["Noto Sans","Noto Sans JP"],
+  ["Noto Serif","Noto Serif JP"],
+  ["M PLUS 1p","M PLUS 1p"],
+  ["M PLUS 丸","M PLUS Rounded 1c"],
+  ["Zen角ゴ","Zen Kaku Gothic New"],
+  ["Zen旧明朝","Zen Old Mincho"],
+  ["Zen丸ゴ","Zen Maru Gothic"],
+  ["しっぽり明朝","Shippori Mincho"],
+  ["しっぽりアンチック","Shippori Antique"],
+  ["さわらび明朝","Sawarabi Mincho"],
+  ["さわらびゴ","Sawarabi Gothic"],
+  ["小杉丸ゴ","Kosugi Maru"],
+  ["クレーOne","Klee One"],
+  ["解星デコール","Kaisei Decol"],
+  ["解星特ミン","Kaisei Tokumin"],
+  ["佑字肅 筆","Yuji Syuku"],
+  ["佑字墨 筆","Yuji Boku"],
+  ["ユセイマジック","Yusei Magic"],
+  ["ドット16","DotGothic16"],
+  ["ロックンロール","RocknRoll One"],
+  ["レゲエ","Reggae One"],
+  ["ランパート","Rampart One"],
+  ["デラゴシック","Dela Gothic One"],
+  ["はちまるポップ","Hachi Maru Pop"],
+  ["モッチーポップ","Mochiy Pop One"],
+  ["ポッタ","Potta One"],
+  ["キウイ丸","Kiwi Maru"],
+  ["ステッキ","Stick"],
+  ["トレイン","Train One"],
+];
+let curFont=FONTS[0][1];
+const DEF={tsize:"mleague",weight:"700",mode:"inlay",cham:"on",split:"none",splitH:"3.5",
+  size:"70",depth:"2.5",sink:"0.5",clear:"0.12",off:"0",font:"Hiragino Kaku Gothic ProN",
+  mag:"none",magShape:"round",magD:"3",magT:"2",magSW:"5",magSD:"5",magST:"2",magSkin:"0.4",
+  body:"#f5f2e8",tcol:"#e67e22",back:"#e67e22"};
+
+const $=id=>document.getElementById(id);
+const face=$("face"), fctx=face.getContext("2d",{willReadFrequently:true});
+const work=document.createElement("canvas");
+const wctx=work.getContext("2d",{willReadFrequently:true});
+const status=$("status");
+
+const baseCache={};
+function applySize(){
+  const s=SIZES[$("tsize").value];
+  W=s.W;H=s.H;T=s.T;
+  CW=Math.round(W*RES);CH=Math.round(H*RES);
+  face.width=CW;face.height=CH;
+  face.style.height=(130*H/W)+"px";
+  work.width=CW;work.height=CH;
+  $("sizeNote").textContent=`${s.label}: 高${H} × 幅${W} × 厚${T} mm`;
+}
+
+// ---- フォント選択グリッド ----
+const grid=$("fontGrid");
+function buildGrid(){
+  grid.innerHTML="";
+  const sample=($("text").value.trim()[0])||"中";
+  for(const [name,fam] of FONTS){
+    const c=document.createElement("div");
+    c.className="fcard"+(fam===curFont?" sel":"");
+    c.innerHTML=`<div class="samp" style='font-family:"${fam}";font-weight:${$("weight").value}'>${sample}</div><div class="fname">${name}</div>`;
+    c.onclick=()=>{curFont=fam;[...grid.children].forEach(e=>e.classList.remove("sel"));c.classList.add("sel");queue();};
+    grid.appendChild(c);
+  }
+}
+
+// ---- 文字描画（インク実寸で上下中央揃え / dilateMM>0で外側に太らせる）----
+async function drawText(ctx,dilateMM){
+  const text=$("text").value.trim().slice(0,2);
+  const wgt=$("weight").value;
+  const sizeMM=W*$("size").value/100;
+  const px=sizeMM*RES;
+  const offY=-$("off").value/100*H*RES;
+  await document.fonts.load(`${wgt} ${px}px "${curFont}"`, text||"中").catch(()=>{});
+  ctx.font=`${wgt} ${px}px "${curFont}", sans-serif`;
+  ctx.textAlign="center"; ctx.textBaseline="alphabetic";
+  ctx.lineJoin="round"; ctx.lineCap="round";
+  const chars=[...text];
+  if(!chars.length) return false;
+  const met=chars.map(ch=>{const m=ctx.measureText(ch);
+    return {a:m.actualBoundingBoxAscent,d:m.actualBoundingBoxDescent};});
+  const put=(ch,y)=>{
+    ctx.fillText(ch, CW/2, y);
+    if(dilateMM>0){ ctx.lineWidth=dilateMM*2*RES; ctx.strokeText(ch, CW/2, y); }
+  };
+  const cy=CH/2+offY;
+  if(chars.length===1){
+    const h=met[0].a+met[0].d;
+    put(chars[0], cy-h/2+met[0].a); // インクの箱の中心を牌中央へ
+  }else{
+    const gap=px*0.10;
+    const h1=met[0].a+met[0].d, h2=met[1].a+met[1].d;
+    const top=cy-(h1+gap+h2)/2;
+    put(chars[0], top+met[0].a);
+    put(chars[1], top+h1+gap+met[1].a);
+  }
+  $("sizeV").textContent=sizeMM.toFixed(1)+"mm";
+  $("depthV").textContent=$("depth").value+"mm";
+  $("sinkV").textContent=$("sink").value+"mm";
+  $("clearV").textContent=$("clear").value+"mm";
+  $("splitHV").textContent=$("splitH").value+"mm";
+  $("magV").textContent=`径${$("magD").value}×厚${$("magT").value}`;
+  $("magSV").textContent=`${$("magSW").value}×${$("magSD").value}×${$("magST").value}`;
+  $("magSkinV").textContent=`${$("magSkin").value}mm (${Math.round(+$("magSkin").value/0.2)}層)`;
+  $("offV").textContent=$("off").value;
+  return true;
+}
+
+// ---- マスク → 輪郭リング ----
+function simplify(pts,eps){
+  if(pts.length<4) return pts;
+  const keep=new Uint8Array(pts.length); keep[0]=keep[pts.length-1]=1;
+  const mid=Math.floor(pts.length/2); keep[mid]=1;
+  const st=[[0,mid],[mid,pts.length-1]];
+  while(st.length){
+    const [i0,i1]=st.pop(); if(i1<=i0+1) continue;
+    const p0=pts[i0],p1=pts[i1]; let dm=-1,im=-1;
+    const dx=p1[0]-p0[0], dy=p1[1]-p0[1], L=Math.hypot(dx,dy)||1e-9;
+    for(let i=i0+1;i<i1;i++){
+      const d=Math.abs(dx*(p0[1]-pts[i][1])-(p0[0]-pts[i][0])*dy)/L;
+      if(d>dm){dm=d;im=i;}
+    }
+    if(dm>eps){keep[im]=1;st.push([i0,im],[im,i1]);}
+  }
+  return pts.filter((_,i)=>keep[i]);
+}
+async function textRings(dilateMM){
+  wctx.clearRect(0,0,CW,CH);
+  wctx.fillStyle=wctx.strokeStyle="#000";
+  const has=await drawText(wctx,dilateMM);
+  if(!has) return [];
+  const a=wctx.getImageData(0,0,CW,CH).data;
+  const vals=new Float64Array(CW*CH);
+  for(let i=0;i<vals.length;i++) vals[i]=a[i*4+3];
+  const geo=d3.contours().size([CW,CH]).smooth(true).contour(vals,127);
+  const rings=[];
+  for(const poly of geo.coordinates)
+    for(const ring of poly){
+      const r=simplify(ring.map(([x,y])=>[x/RES-W/2,(CH-y)/RES-H/2]),0.02);
+      if(r.length>=3) rings.push(r);
+    }
+  return rings;
+}
+
+// ---- Manifoldソリッド生成 ----
+const SEG=48, CHAM_H=0.8, CHAM_W=0.3, CHAM_STEPS=4;
+function tileBase(){
+  const key=$("tsize").value;
+  if(baseCache[key]) return baseCache[key];
+  const hx=W/2-R, hy=H/2-R, hz=T/2-R;
+  const parts=[
+    Manifold.cube([W,2*hy,2*hz],true),
+    Manifold.cube([2*hx,H,2*hz],true),
+    Manifold.cube([2*hx,2*hy,T],true),
+  ];
+  const czl=Manifold.cylinder(2*hz,R,R,SEG,true);
+  const cxl=Manifold.cylinder(2*hx,R,R,SEG,true).rotate([0,90,0]);
+  const cyl=Manifold.cylinder(2*hy,R,R,SEG,true).rotate([90,0,0]);
+  for(const sx of[-1,1])for(const sy of[-1,1]) parts.push(czl.translate([sx*hx,sy*hy,0]));
+  for(const sy of[-1,1])for(const sz of[-1,1]) parts.push(cxl.translate([0,sy*hy,sz*hz]));
+  for(const sx of[-1,1])for(const sz of[-1,1]) parts.push(cyl.translate([sx*hx,0,sz*hz]));
+  const sph=Manifold.sphere(R,SEG);
+  for(const sx of[-1,1])for(const sy of[-1,1])for(const sz of[-1,1])
+    parts.push(sph.translate([sx*hx,sy*hy,sz*hz]));
+  return baseCache[key]=Manifold.union(parts);
+}
+
+let result={preview:[],bodies:[]}; // preview:[{mesh,color}] bodies:[{name,ex,mesh}]
+async function buildAll(){
+  const depth=+$("depth").value, clr=+$("clear").value, sink=+$("sink").value;
+  const th=Math.max(0.5, depth-sink);
+  const inlay=$("mode").value==="inlay";
+  const chamOn=$("cham").value==="on";
+  const doSplit=$("split").value==="split";
+  const topTh=Math.max(+$("splitH").value, depth+0.5);
+  const rings=await textRings(0);
+  let tileM=tileBase(), pieceM=null, pieceFlat=null;
+  if(rings.length){
+    const cs=new CrossSection(rings,"EvenOdd");
+    if(inlay){
+      let cut=cs.offset(clr,"Round").extrude(depth+2).translate([0,0,T/2-depth]);
+      if(chamOn) for(let k=1;k<=CHAM_STEPS;k++){
+        cut=cut.add(cs.offset(clr+CHAM_W*k/CHAM_STEPS,"Round")
+          .extrude(2).translate([0,0,T/2-CHAM_H+(k-1)*CHAM_H/CHAM_STEPS]));
+      }
+      tileM=tileM.subtract(cut);
+      pieceM=cs.extrude(th).translate([0,0,T/2-depth]);
+      pieceFlat=cs.extrude(th);
+    }else{
+      tileM=tileM.subtract(cs.extrude(depth+2).translate([0,0,T/2-depth]));
+    }
+  }
+  if($("mag").value==="on"){ // 底面近くに磁石ポケット（すきま: 径/辺+0.5, 高さ+0.2）
+    const round=$("magShape").value==="round";
+    const mh=(round?+$("magT").value:+$("magST").value)+0.2;
+    const INSET=1.6; // 側壁の最小残し
+    let cutter, hw, hd;
+    if(round){ const cr=(+$("magD").value+0.5)/2; hw=hd=cr;
+      cutter=Manifold.cylinder(mh,cr,cr,32,true);
+    }else{ const sw=+$("magSW").value+0.5, sd=+$("magSD").value+0.5; hw=sw/2; hd=sd/2;
+      cutter=Manifold.cube([sw,sd,mh],true);
+    }
+    const cx=Math.max(0,W/2-hw-INSET), cy=Math.max(0,H/2-hd-INSET);
+    const centers=round?[[cx,cy],[-cx,cy],[cx,-cy],[-cx,-cy]]:[[cx,cy],[-cx,-cy]];
+    const z=-T/2+(+$("magSkin").value)+mh/2;
+    for(const [px,py] of centers) tileM=tileM.subtract(cutter.translate([px,py,z]));
+  }
+  // ---- プレビュー（組付け状態・背色つき）----
+  const band=T*BACK_RATIO;
+  const lowSlab=Manifold.cube([W+4,H+4,band],true).translate([0,0,-T/2+band/2]);
+  const hex=id=>parseInt($(id).value.slice(1),16);
+  const preview=[
+    {m:tileM.subtract(lowSlab).getMesh(), c:hex("body")},
+    {m:tileM.intersect(lowSlab).getMesh(), c:hex("back")},
+  ];
+  if(pieceM) preview.push({m:pieceM.getMesh(), c:hex("tcol")});
+  // ---- 出力ボディ ----
+  const bodies=[];
+  if(doSplit){
+    const cutZ=T/2-topTh;
+    const upSlab=Manifold.cube([W+4,H+4,topTh+2],true).translate([0,0,cutZ+(topTh+2)/2]);
+    const botM=tileM.subtract(upSlab), topM=tileM.intersect(upSlab);
+    bodies.push({name:"tile_ura",ex:1,m:botM.translate([0,0,T/2]).getMesh()});
+    const topExp=topM.rotate([180,0,0]); // 文字面を下に
+    const bb=topExp.boundingBox();
+    bodies.push({name:"tile_omote",ex:1,m:topExp.translate([W+5,0,-bb.min[2]]).getMesh()});
+  }else{
+    bodies.push({name:"tile",ex:1,m:tileM.translate([0,0,T/2]).getMesh()});
+  }
+  if(pieceFlat){
+    const bb=pieceFlat.boundingBox();
+    const X=doSplit?2*(W+5):W+5;
+    bodies.push({name:"moji",ex:2,m:pieceFlat.translate([X-(bb.min[0]+bb.max[0])/2,0,0]).getMesh()});
+  }
+  result={preview,bodies};
+  return result;
+}
+
+// ---- 表面2Dプレビュー ----
+async function drawFacePreview(){
+  fctx.fillStyle="#f8f6ef"; fctx.fillRect(0,0,CW,CH);
+  fctx.fillStyle=fctx.strokeStyle=$("tcol").value;
+  await drawText(fctx,0);
+}
+
+// ---- 設定値サマリ（デフォルト値は省略）----
+function settingsLines(){
+  const L=[];
+  L.push(["文字",$("text").value.trim()||"（なし）"]);
+  if(curFont!==DEF.font) L.push(["フォント",(FONTS.find(f=>f[1]===curFont)||["?"])[0]]);
+  if($("tsize").value!==DEF.tsize) L.push(["サイズ",SIZES[$("tsize").value].label]);
+  if($("weight").value!==DEF.weight) L.push(["太さ",{400:"標準",700:"太字",900:"極太"}[$("weight").value]]);
+  if($("mode").value!==DEF.mode) L.push(["方式","彫り込みのみ"]);
+  if($("cham").value!==DEF.cham) L.push(["面取り","なし"]);
+  if($("split").value!==DEF.split){L.push(["分割","上下"]);
+    if($("splitH").value!==DEF.splitH) L.push(["分割位置",$("splitH").value+"mm"]);}
+  if($("size").value!==DEF.size) L.push(["文字サイズ",$("size").value]);
+  if($("depth").value!==DEF.depth) L.push(["深さ",$("depth").value+"mm"]);
+  if($("sink").value!==DEF.sink) L.push(["沈み",$("sink").value+"mm"]);
+  if($("clear").value!==DEF.clear) L.push(["すきま",$("clear").value+"mm"]);
+  if($("off").value!==DEF.off) L.push(["上下位置",$("off").value]);
+  if($("mag").value!==DEF.mag){
+    const r=$("magShape").value==="round";
+    L.push(["磁石",r?`円φ${$("magD").value}×${$("magT").value} 4隅`:`角${$("magSW").value}×${$("magSD").value}×${$("magST").value} 2隅`]);
+    if($("magSkin").value!==DEF.magSkin) L.push(["底残し",$("magSkin").value+"mm"]);
+  }
+  if($("body").value!==DEF.body) L.push(["本体色",$("body").value]);
+  if($("tcol").value!==DEF.tcol) L.push(["文字色",$("tcol").value]);
+  if($("back").value!==DEF.back) L.push(["背面色",$("back").value]);
+  return L;
+}
+function renderSummary(){
+  const L=settingsLines();
+  $("summary").innerHTML="<b>設定値</b>（初期値は省略）<br>"+
+    L.map(([k,v])=>`${k}=${v}`).join("<br>")+
+    `<button id="copyBtn">コピー</button>`;
+  $("copyBtn").onclick=()=>{
+    navigator.clipboard.writeText(L.map(([k,v])=>`${k}=${v}`).join(" / "))
+      .then(()=>{$("copyBtn").textContent="コピーしました";setTimeout(()=>$("copyBtn").textContent="コピー",1200);});
+  };
+}
+
+// ---- 3Dプレビュー ----
+let scene,camera,renderer,group=null,dragging=false,px0=0,py0=0,rx=-1.05,rz=0.5;
+function initGL(){
+  const view=$("view");
+  renderer=new THREE.WebGLRenderer({antialias:true});
+  view.insertBefore(renderer.domElement,view.firstChild);
+  scene=new THREE.Scene(); scene.background=new THREE.Color(0x1d1d1f);
+  camera=new THREE.PerspectiveCamera(35,1,1,500);
+  camera.position.set(0,0,80);
+  scene.add(new THREE.AmbientLight(0xffffff,.55));
+  const dl=new THREE.DirectionalLight(0xffffff,1.2); dl.position.set(30,-40,80); scene.add(dl);
+  const dl2=new THREE.DirectionalLight(0x88aaff,.4); dl2.position.set(-40,30,-20); scene.add(dl2);
+  const resize=()=>{const w=view.clientWidth,h=view.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();};
+  window.addEventListener("resize",resize); resize();
+  const el=renderer.domElement;
+  el.addEventListener("pointerdown",e=>{dragging=true;px0=e.clientX;py0=e.clientY;});
+  window.addEventListener("pointerup",()=>dragging=false);
+  window.addEventListener("pointermove",e=>{if(!dragging)return;
+    rz+=(e.clientX-px0)*.01; rx+=(e.clientY-py0)*.01; px0=e.clientX;py0=e.clientY; place();});
+  el.addEventListener("wheel",e=>{e.preventDefault();camera.position.z=Math.min(220,Math.max(30,camera.position.z+e.deltaY*.05));},{passive:false});
+  (function loop(){requestAnimationFrame(loop);renderer.render(scene,camera);})();
+}
+function place(){ if(group) group.rotation.set(rx,0,rz); }
+function meshToGeo(mesh){
+  const tv=mesh.triVerts, vp=mesh.vertProperties, n=tv.length;
+  const pos=new Float32Array(n*3);
+  for(let i=0;i<n;i++){const v=tv[i]*3;pos[i*3]=vp[v];pos[i*3+1]=vp[v+1];pos[i*3+2]=vp[v+2];}
+  const g=new THREE.BufferGeometry();
+  g.setAttribute("position",new THREE.BufferAttribute(pos,3));
+  g.computeVertexNormals();
+  return g;
+}
+function showMeshes(){
+  if(group){scene.remove(group);group.traverse(o=>o.geometry&&o.geometry.dispose());}
+  group=new THREE.Group();
+  for(const p of result.preview)
+    group.add(new THREE.Mesh(meshToGeo(p.m),new THREE.MeshStandardMaterial({color:p.c,roughness:.45,metalness:.02,flatShading:true})));
+  place(); scene.add(group);
+}
+
+// ---- STL（複数ボディ結合）----
+function toSTL(meshes){
+  const n=meshes.reduce((s,m)=>s+m.triVerts.length/3,0);
+  const buf=new ArrayBuffer(84+n*50), dv=new DataView(buf);
+  dv.setUint32(80,n,true);
+  let off=84;
+  for(const mesh of meshes){
+    const tv=mesh.triVerts, vp=mesh.vertProperties;
+    for(let t=0;t<tv.length/3;t++){
+      const a=tv[t*3]*3,b=tv[t*3+1]*3,c=tv[t*3+2]*3;
+      const ax=vp[a],ay=vp[a+1],az=vp[a+2],bx=vp[b],by=vp[b+1],bz=vp[b+2],cx=vp[c],cy=vp[c+1],cz=vp[c+2];
+      const ux=bx-ax,uy=by-ay,uz=bz-az,vx=cx-ax,vy=cy-ay,vz=cz-az;
+      let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;
+      const l=Math.hypot(nx,ny,nz)||1;
+      for(const v of [nx/l,ny/l,nz/l,ax,ay,az,bx,by,bz,cx,cy,cz]){dv.setFloat32(off,v,true);off+=4;}
+      dv.setUint16(off,0,true);off+=2;
+    }
+  }
+  return buf;
+}
+
+// ---- ZIP（無圧縮）----
+const CRC=(()=>{const t=new Uint32Array(256);for(let i=0;i<256;i++){let c=i;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[i]=c}
+  return d=>{let c=~0;for(let i=0;i<d.length;i++)c=t[(c^d[i])&255]^(c>>>8);return ~c>>>0}})();
+function zip(files){
+  const te=new TextEncoder(), parts=[], cd=[]; let off=0;
+  for(const [name,content] of files){
+    const nm=te.encode(name);
+    const data=typeof content==="string"?te.encode(content):content;
+    const crc=CRC(data);
+    const lh=new DataView(new ArrayBuffer(30));
+    lh.setUint32(0,0x04034b50,true);lh.setUint16(4,20,true);
+    lh.setUint32(14,crc,true);lh.setUint32(18,data.length,true);lh.setUint32(22,data.length,true);
+    lh.setUint16(26,nm.length,true);
+    parts.push(new Uint8Array(lh.buffer),nm,data);
+    const ch=new DataView(new ArrayBuffer(46));
+    ch.setUint32(0,0x02014b50,true);ch.setUint16(4,20,true);ch.setUint16(6,20,true);
+    ch.setUint32(16,crc,true);ch.setUint32(20,data.length,true);ch.setUint32(24,data.length,true);
+    ch.setUint16(28,nm.length,true);ch.setUint32(42,off,true);
+    cd.push(new Uint8Array(ch.buffer),nm);
+    off+=30+nm.length+data.length;
+  }
+  let cdlen=0;for(const c of cd)cdlen+=c.length;
+  const eo=new DataView(new ArrayBuffer(22));
+  eo.setUint32(0,0x06054b50,true);eo.setUint16(8,files.length,true);eo.setUint16(10,files.length,true);
+  eo.setUint32(12,cdlen,true);eo.setUint32(16,off,true);
+  return new Blob([...parts,...cd,new Uint8Array(eo.buffer)],{type:"model/3mf"});
+}
+
+// ---- 3MF生成（オブジェクト分離＋押出機(色)割当）----
+function to3MF(bodies){
+  let res="", items="", cfg="";
+  bodies.forEach((b,i)=>{
+    const id=i+1, tv=b.m.triVerts, vp=b.m.vertProperties;
+    let vs="",ts="";
+    for(let v=0;v<vp.length;v+=3) vs+=`<vertex x="${vp[v].toFixed(4)}" y="${vp[v+1].toFixed(4)}" z="${vp[v+2].toFixed(4)}"/>`;
+    for(let t=0;t<tv.length;t+=3) ts+=`<triangle v1="${tv[t]}" v2="${tv[t+1]}" v3="${tv[t+2]}"/>`;
+    res+=`<object id="${id}" type="model"><mesh><vertices>${vs}</vertices><triangles>${ts}</triangles></mesh></object>`;
+    items+=`<item objectid="${id}"/>`;
+    cfg+=`<object id="${id}"><metadata key="name" value="${b.name}"/><metadata key="extruder" value="${b.ex}"/></object>`;
+  });
+  const model=`<?xml version="1.0" encoding="UTF-8"?>
+<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">
+<metadata name="Application">mahjong-tile-tool</metadata>
+<resources>${res}</resources><build>${items}</build></model>`;
+  return zip([
+    ["[Content_Types].xml",`<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/>
+<Default Extension="config" ContentType="text/xml"/></Types>`],
+    ["_rels/.rels",`<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Target="/3D/3dmodel.model" Id="rel-1" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>`],
+    ["3D/3dmodel.model",model],
+    ["Metadata/model_settings.config",`<?xml version="1.0" encoding="UTF-8"?>
+<config>${cfg}</config>`],
+  ]);
+}
+function dlBlob(blob,name){
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+}
+
+// ---- 画像表示（保存せずオーバーレイ）----
+async function showImage(){
+  renderer.render(scene,camera);
+  const shot3d=renderer.domElement;
+  const c=document.createElement("canvas");
+  const Wc=1100,Hc=700; c.width=Wc;c.height=Hc;
+  const x=c.getContext("2d");
+  x.fillStyle="#1d1d1f"; x.fillRect(0,0,Wc,Hc);
+  const s=Math.min(700/shot3d.width, 660/shot3d.height);
+  x.drawImage(shot3d,20,(Hc-shot3d.height*s)/2,shot3d.width*s,shot3d.height*s);
+  const fw=240, fh=fw*CH/CW;
+  x.fillStyle="#f8f6ef"; x.beginPath(); x.roundRect(Wc-fw-30,20,fw,fh,10); x.fill();
+  x.drawImage(face,Wc-fw-30,20,fw,fh);
+  x.fillStyle="#7fd0a0"; x.font="bold 20px sans-serif";
+  x.fillText("設定値",Wc-fw-30,fh+60);
+  x.fillStyle="#eee"; x.font="16px sans-serif";
+  settingsLines().forEach(([k,v],i)=>x.fillText(`${k} = ${v}`,Wc-fw-30,fh+90+i*24));
+  x.fillStyle="#777"; x.font="12px sans-serif";
+  x.fillText($("sizeNote").textContent,20,Hc-14);
+  $("shot").src=c.toDataURL("image/png");
+  $("overlay").style.display="flex";
+}
+$("overlay").addEventListener("click",()=>$("overlay").style.display="none");
+
+// ---- 更新フロー ----
+let timer=null,busy=false;
+async function update(){
+  if(busy) return; busy=true;
+  status.textContent="生成中…";
+  try{
+    await drawFacePreview();
+    await buildAll();
+    showMeshes();
+    renderSummary();
+    const nt=result.bodies.reduce((s,b)=>s+b.m.triVerts.length/3,0);
+    const layer=Math.round(T*BACK_RATIO/0.2)+1;
+    let s=`${result.bodies.length}ボディ / ${nt.toLocaleString()}三角形 / 背色→本体色の色替え目安: 約${layer}層目(0.2mm層)`;
+    if($("mag").value==="on"){
+      const mt=$("magShape").value==="round"?+$("magT").value:+$("magST").value;
+      const ph=(+$("magSkin").value)+mt+0.2, cnt=$("magShape").value==="round"?4:2;
+      s+=` / 磁石${cnt}個挿入: 高さ${ph.toFixed(1)}mm＝約${Math.round(ph/0.2)+1}層目で一時停止`;
+    }
+    status.textContent=s;
+  }catch(e){ status.textContent="エラー: "+e.message; console.error(e); }
+  busy=false;
+}
+function queue(){clearTimeout(timer);timer=setTimeout(update,300);}
+function updateMagUI(){
+  const on=$("mag").value==="on", r=$("magShape").value==="round";
+  $("magShape").parentElement.style.opacity=on?1:.4;
+  $("magRound").style.display=on&&r?"":"none";
+  $("magSquare").style.display=on&&!r?"":"none";
+  $("magSkinBox").style.display=on?"":"none";
+}
+for(const id of ["mode","cham","split","splitH","size","depth","sink","clear","off","mag","magShape","magD","magT","magSW","magSD","magST","magSkin","body","tcol","back"]) $(id).addEventListener("input",queue);
+for(const id of ["mag","magShape"]) $(id).addEventListener("input",updateMagUI);
+$("tsize").addEventListener("input",()=>{applySize();queue();});
+$("weight").addEventListener("input",()=>{buildGrid();queue();});
+$("text").addEventListener("input",()=>{buildGrid();queue();});
+document.querySelectorAll(".mb").forEach(b=>b.addEventListener("click",()=>{
+  const inp=$(b.dataset.t);
+  b.dataset.d==="1"?inp.stepUp():inp.stepDown();
+  inp.dispatchEvent(new Event("input"));
+}));
+
+$("dl3mf").addEventListener("click",async()=>{
+  const b=$("dl3mf"); b.disabled=true;
+  try{ await update();
+    dlBlob(to3MF(result.bodies),`mahjong_${$("text").value.trim()||"blank"}.3mf`);
+  }finally{ b.disabled=false; }
+});
+$("dlstl").addEventListener("click",async()=>{
+  const b=$("dlstl"); b.disabled=true;
+  try{ await update();
+    dlBlob(new Blob([toSTL(result.bodies.map(b=>b.m))],{type:"model/stl"}),`mahjong_${$("text").value.trim()||"blank"}.stl`);
+  }finally{ b.disabled=false; }
+});
+$("imgbtn").addEventListener("click",showImage);
+
+applySize(); buildGrid(); updateMagUI(); initGL(); update();
+window._getResult=()=>result; window._toSTL=toSTL; window._to3MF=to3MF;
+</script>
+</body>
+</html>
