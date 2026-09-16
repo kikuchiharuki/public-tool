@@ -15,7 +15,7 @@
     -webkit-font-smoothing:antialiased}
   #c{position:absolute;inset:0;width:100vw;height:100vh;display:block;touch-action:none}
 
-  .panel{position:absolute;top:10px;left:10px;z-index:3;width:264px;max-height:calc(100vh - 20px);
+  .panel{position:absolute;top:10px;left:10px;z-index:3;width:268px;max-height:calc(100vh - 20px);
     overflow:auto;background:var(--panel);backdrop-filter:blur(8px);border-radius:11px;
     padding:10px 12px;box-shadow:var(--shadow)}
   .panel h1{font-size:14px;margin:0 0 2px}
@@ -23,7 +23,8 @@
   .grp{border-top:1px solid var(--line);margin-top:8px;padding-top:7px}
   .grp>b{font-size:11px;color:var(--dim);letter-spacing:.5px}
   .row{display:flex;align-items:center;gap:7px;margin-top:5px}
-  .row label{flex:0 0 78px;font-size:12px}
+  .row.off{opacity:.35;pointer-events:none}
+  .row label{flex:0 0 84px;font-size:12px}
   .row input[type=range]{flex:1;min-width:0;accent-color:var(--accent)}
   .row .v{flex:0 0 52px;text-align:right;font-variant-numeric:tabular-nums;font-size:12px}
   .btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
@@ -37,6 +38,7 @@
   .out .val{font-variant-numeric:tabular-nums}
   .ng{color:var(--ng);font-weight:bold}
   .ok{color:var(--ok)}
+  .note{font-size:11px;color:var(--dim);margin-top:5px}
   .hint{position:absolute;right:10px;bottom:10px;z-index:3;background:var(--panel);
     border-radius:9px;padding:6px 10px;font-size:11px;color:var(--dim);box-shadow:var(--shadow)}
   @media (max-width:560px){
@@ -50,20 +52,28 @@
 
 <div class="panel">
   <h1>🪷 ディフューザー 開き具合シミュレータ</h1>
-  <p class="lead">サポーターの穴の角度を変えて、スティックの開き方と干渉を試す。</p>
+  <p class="lead">スティックサポーターの穴の角度を変えて、広がり方と干渉を試す。寸法の既定値は実機（実測）。</p>
 
-  <div class="grp"><b>スティック</b>
-    <div class="row"><label>本数</label><input type="range" id="N" min="3" max="12" step="1"><span class="v" id="N_v"></span></div>
-    <div class="row"><label>傾き</label><input type="range" id="TILT" min="0" max="30" step="0.5"><span class="v" id="TILT_v"></span></div>
-    <div class="row"><label>ねじり</label><input type="range" id="TWIST" min="0" max="90" step="5"><span class="v" id="TWIST_v"></span></div>
-    <div class="row"><label>穴の半径</label><input type="range" id="THROAT" min="0" max="7" step="0.1"><span class="v" id="THROAT_v"></span></div>
+  <div class="grp"><b>モデル</b>
+    <div class="btns">
+      <button data-mode="10">10本・部屋仕切り（実機）</button>
+      <button data-mode="5">5本・丸穴（旧版）</button>
+    </div>
+    <div class="note" id="modeNote"></div>
+  </div>
+
+  <div class="grp"><b>スティックの配り方</b>
+    <div class="row" id="row_N"><label>本数</label><input type="range" id="N" min="3" max="12" step="1"><span class="v" id="N_v"></span></div>
+    <div class="row"><label id="tiltLabel">傾き</label><input type="range" id="TILT" min="0" max="30" step="0.5"><span class="v" id="TILT_v"></span></div>
+    <div class="row" id="row_TWIST"><label>ねじり</label><input type="range" id="TWIST" min="0" max="90" step="5"><span class="v" id="TWIST_v"></span></div>
+    <div class="row" id="row_THROAT"><label>穴の半径</label><input type="range" id="THROAT" min="0" max="7" step="0.1"><span class="v" id="THROAT_v"></span></div>
     <div class="row"><label>スティック径</label><input type="range" id="SD" min="1.5" max="5" step="0.1"><span class="v" id="SD_v"></span></div>
     <div class="row"><label>長さ</label><input type="range" id="SL" min="120" max="350" step="5"><span class="v" id="SL_v"></span></div>
   </div>
 
-  <div class="grp"><b>瓶</b>
-    <div class="row"><label>胴の直径</label><input type="range" id="BD" min="30" max="110" step="1"><span class="v" id="BD_v"></span></div>
-    <div class="row"><label>深さ</label><input type="range" id="DEPTH" min="30" max="140" step="1"><span class="v" id="DEPTH_v"></span></div>
+  <div class="grp"><b>瓶（実測値）</b>
+    <div class="row"><label>胴の外径</label><input type="range" id="BD" min="40" max="110" step="0.1"><span class="v" id="BD_v"></span></div>
+    <div class="row"><label>中の深さ</label><input type="range" id="DEPTH" min="30" max="140" step="1"><span class="v" id="DEPTH_v"></span></div>
     <div class="row"><label>口の内径</label><input type="range" id="MD" min="10" max="30" step="0.1"><span class="v" id="MD_v"></span></div>
   </div>
 
@@ -95,13 +105,22 @@
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 
-// 座標: z=0 が差し込み部の下端、z=PL が瓶の口（サポーターのツバの下）。瓶の中は z<PL。
-// 既定値は diffuser_stick_support.py の実測・設計値（SLはcheck_10.pyで見ている長さ250mm、
-// 胴の直径だけは実測データが無いので見た目用の60mm）
-const DEF = {N:5, TILT:12, TWIST:90, THROAT:3.8, SD:3.0, SL:250, BD:60, DEPTH:62, MD:16.8, PL:15};
-const KEYS = Object.keys(DEF);
+// 座標: z=0 が差し込み部の下端、z=PL が瓶の口の上端。瓶の中は z<PL。
+// 既定値は実機の設計/実測（diffuser_stick_support.py・bottle_dummy.py）:
+//   口の穴16.8 / 差し込み長15 / 中の深さ62 / スティックφ3.0・長さ250 / 胴の外径70.2
+const DEF = {MODE:10, N:5, TILT:10, TWIST:90, THROAT:3.8, SD:3.0, SL:250,
+             BD:70.2, DEPTH:62, MD:16.8, PL:15};
+const KEYS = ['N','TILT','TWIST','THROAT','SD','SL','BD','DEPTH','MD','PL'];
 const P = {...DEF};
-const FLANGE_W = 3.75, FLANGE_T = 0.8, NECK_H = 17, SHOULDER_H = 18, PLUG_GAP = 0.2;
+// サポーターと瓶の固定寸法（実測・設計値）
+const FLANGE_W = 3.75, FLANGE_T = 0.8, PLUG_GAP = 0.2;   // ツバ張り出し/厚み・口とのすき間
+const NECK_H = 16.6, NECK_D = 26.8, BODY_H = 54.8, INNER_WALL = 4.0;
+const OUTER_WALL = 0.6, CELL_GAP = 0.35;                 // 10本版: 外周肉厚・部屋のすき間
+
+// 10本版の断面レイアウト（z=ZTでの軸位置を半径上限で正規化したもの。最小間隔を最大化した実機の配置）
+const PTS10 = [[-0.96553,-0.26028],[0.33962,0.94056],[-0.21596,0.23472],[-0.37126,0.92853],
+               [-0.89447,0.44713],[-0.54853,-0.83613],[0.14575,-0.98932],[0.87882,0.47715],
+               [0.97379,-0.22746],[0.26543,-0.28849]];
 
 const $ = id => document.getElementById(id);
 const canvas = $('c');
@@ -118,9 +137,11 @@ const sun = new THREE.DirectionalLight(0xffffff, 1.3); sun.position.set(-1,-1.2,
 const root = new THREE.Group(); scene.add(root);
 
 // ── 幾何 ──────────────────────────────────────────────────────────────
-// スティックの中心線: z=0 での点 p と単位方向 d。
-// ねじり0°=真横に開くだけ、90°=接線方向にねじって開く（互いに交わらない双曲面の母線）。
-function stickLine(i){
+const plugD = () => P.MD - PLUG_GAP;
+const zBottom = () => P.PL - P.DEPTH;
+
+// 5本版: 円周に並べた穴。ねじり0°=真横に開くだけ、90°=接線方向にねじる（双曲面の母線）。
+function line5(i){
   const phi = 2*Math.PI*i/P.N;
   const t = P.TILT*Math.PI/180, b = P.TWIST*Math.PI/180;
   const sr = Math.sin(t)*Math.cos(b), st = Math.sin(t)*Math.sin(b);
@@ -130,21 +151,38 @@ function stickLine(i){
                          Math.sin(phi)*sr + Math.cos(phi)*st, Math.cos(t))
   };
 }
+// 10本版: 断面が高さに応じて回転・拡大するだけの直線群。外側ほど傾きが大きく、互いに交わらない。
+function geom10(){
+  const ZT = (P.PL + FLANGE_T)/2;
+  const cellR = P.SD/2 + CELL_GAP;
+  const R0 = Math.max(0.1, plugD()/2 - OUTER_WALL - cellR);   // 端での軸位置の半径上限
+  const K = Math.tan(P.TILT*Math.PI/180) / R0;                // ねじれ率[1/mm]
+  const R = R0 / Math.hypot(1, ZT*K);                         // z=ZTでの半径上限
+  return {ZT, K, R};
+}
+function line10(i){
+  const {ZT, K, R} = geom10();
+  const x0 = PTS10[i][0]*R, y0 = PTS10[i][1]*R;
+  return {
+    p: new THREE.Vector3(x0 + ZT*K*y0, y0 - ZT*K*x0, 0),
+    d: new THREE.Vector3(-K*y0, K*x0, 1).normalize()
+  };
+}
+const nSticks = () => P.MODE === 10 ? 10 : P.N;
+const stickLine = i => P.MODE === 10 ? line10(i) : line5(i);
 const at = (L, z) => L.p.clone().addScaledVector(L.d, z / L.d.z);   // 中心線上の高さzの点
-const zBottom = () => P.PL - P.DEPTH;
-// 瓶の内側の半径（高さzで）。口→肩→胴。
+
+// 瓶の内側の半径（高さzで）。口の穴と胴の空洞が段でつながる（bottle_dummy.py と同じ）。
 function rInner(z){
-  const zNeck = P.PL - NECK_H, zSh = zNeck - SHOULDER_H, Rb = P.BD/2, Rm = P.MD/2;
-  if (z >= zNeck) return Rm;
-  if (z >= zSh) return Rm + (Rb - Rm) * (zNeck - z) / SHOULDER_H;
-  return Rb;
+  const zNeck = P.PL - NECK_H;
+  return z >= zNeck - INNER_WALL ? P.MD/2 : P.BD/2 - INNER_WALL;
 }
 
 // ── 描画 ──────────────────────────────────────────────────────────────
 const matStick = new THREE.MeshStandardMaterial({color:0xd8ccb8, roughness:.8, metalness:0});
 const matStickNG = new THREE.MeshStandardMaterial({color:0xc4453a, roughness:.8, metalness:0});
 const matPlug = new THREE.MeshStandardMaterial({color:0x59605f, roughness:.6, metalness:0,
-  transparent:true, opacity:.55});
+  transparent:true, opacity:.5});
 const matGlass = new THREE.MeshStandardMaterial({color:0x8fb8c8, roughness:.25, metalness:0,
   transparent:true, opacity:.22, side:THREE.DoubleSide});
 const Y = new THREE.Vector3(0,1,0);
@@ -158,60 +196,58 @@ function rod(a, b, r, mat){                        // a→b の円柱
   m.position.copy(a).addScaledVector(v, .5);
   return m;
 }
+function zCyl(r, h, z0, mat){                      // z0から高さhの円柱（Z軸）
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 48), mat);
+  m.rotation.x = Math.PI/2; m.position.z = z0 + h/2; return m;
+}
 
 function buildBottle(){
-  const Rb = P.BD/2, Rm = P.MD/2, zb = zBottom(), zNeck = P.PL - NECK_H, zSh = zNeck - SHOULDER_H;
-  const pts = [[0,zb],[Rb,zb],[Rb,Math.max(zSh,zb)],[Rm,zNeck],[Rm,P.PL]]
+  const zNeck = P.PL - NECK_H, zBody = zNeck - BODY_H;
+  const pts = [[0,zBody],[P.BD/2,zBody],[P.BD/2,zNeck],[NECK_D/2,zNeck],[NECK_D/2,P.PL]]
     .map(([r,z]) => new THREE.Vector2(r, z));
   // LatheGeometryはY軸まわりに回すので、Z上の座標系に合わせて倒す
   const m = new THREE.Mesh(new THREE.LatheGeometry(pts, 64), matGlass);
   m.rotation.x = Math.PI/2; root.add(m);
 }
-
 function buildPlug(){
-  const D = P.MD - PLUG_GAP;
-  const plug = new THREE.Mesh(new THREE.CylinderGeometry(D/2, D/2, P.PL, 48), matPlug);
-  plug.rotation.x = Math.PI/2; plug.position.z = P.PL/2; root.add(plug);
-  const fl = new THREE.Mesh(new THREE.CylinderGeometry(D/2+FLANGE_W, D/2+FLANGE_W, FLANGE_T, 48), matPlug);
-  fl.rotation.x = Math.PI/2; fl.position.z = P.PL + FLANGE_T/2; root.add(fl);
+  root.add(zCyl(plugD()/2, P.PL, 0, matPlug));
+  root.add(zCyl(plugD()/2 + FLANGE_W, FLANGE_T, P.PL, matPlug));
 }
 
 // ── 計算（干渉と広がり）─────────────────────────────────────────────────
 function analyze(){
-  const lines = Array.from({length:P.N}, (_,i) => stickLine(i));
+  const n = nSticks();
+  const lines = Array.from({length:n}, (_,i) => stickLine(i));
   const zb = zBottom(), r = P.SD/2;
-  // スティックは下端を瓶底に置く。長さが足りなければ届く所まで。
+  // スティックは下端を瓶の底に置く
   const ends = lines.map(L => {
-    const tBottom = zb / L.d.z, tTop = tBottom + P.SL;
-    return {a: L.p.clone().addScaledVector(L.d, tBottom), b: L.p.clone().addScaledVector(L.d, tTop), L};
+    const t0 = zb / L.d.z;
+    return {a: L.p.clone().addScaledVector(L.d, t0),
+            b: L.p.clone().addScaledVector(L.d, t0 + P.SL), L};
   });
-  const zTop = ends[0].b.z;
 
-  // スティック同士: 中心間距離の最小（下端〜上端を等分サンプル）
-  let gap = Infinity;
-  if (P.N > 1){
+  let gap = Infinity;                              // スティック同士のすき間
+  if (n > 1){
     const S = 200;
     for (let s = 0; s <= S; s++){
       const pts = ends.map(e => e.a.clone().lerp(e.b, s/S));
-      for (let i = 0; i < pts.length; i++)
-        for (let j = i+1; j < pts.length; j++)
-          gap = Math.min(gap, pts[i].distanceTo(pts[j]));
+      for (let i = 0; i < n; i++)
+        for (let j = i+1; j < n; j++) gap = Math.min(gap, pts[i].distanceTo(pts[j]));
     }
     gap -= P.SD;
   }
-  // 瓶の内壁とのすき間（瓶の中の範囲だけ）
-  let wall = Infinity;
+  let wall = Infinity;                             // 瓶の内壁とのすき間（瓶の中だけ）
   for (const e of ends){
     for (let s = 0; s <= 120; s++){
-      const z = zb + (Math.min(P.PL, e.b.z) - zb) * s/120;
-      if (z > P.PL) break;
+      const z = zb + (P.PL - zb) * s/120;
       const c = at(e.L, z);
       wall = Math.min(wall, rInner(z) - Math.hypot(c.x, c.y) - r);
     }
   }
   const spread = 2 * Math.max(...ends.map(e => Math.hypot(e.b.x, e.b.y) + r));
-  const reach = zTop - P.PL;                       // 瓶の口から上に出ている長さ
-  return {lines, ends, gap, wall, spread, reach, zTop};
+  const tilts = lines.map(L => Math.acos(L.d.z) * 180/Math.PI);
+  return {ends, gap, wall, spread, reach: ends[0].b.z - P.PL,
+          tmin: Math.min(...tilts), tmax: Math.max(...tilts)};
 }
 
 function render(){
@@ -222,35 +258,49 @@ function render(){
   for (const e of A.ends) root.add(rod(e.a, e.b, P.SD/2, bad ? matStickNG : matStick));
 
   const f = (v, u='mm') => v.toFixed(1) + u;
-  const judge = (v, t) => v < 0 ? `<span class="ng">${t}</span>` : `<span class="ok">${t}</span>`;
+  const judge = (v, t) => `<span class="${v < 0 ? 'ng' : 'ok'}">${t}</span>`;
   $('out').innerHTML = [
     ['先端の広がり（直径）', f(A.spread)],
     ['瓶の口から出る長さ', f(A.reach)],
-    ['スティック同士のすき間', judge(A.gap, P.N > 1 ? f(A.gap) : '—')],
+    ['スティック同士のすき間', nSticks() > 1 ? judge(A.gap, f(A.gap)) : '—'],
     ['瓶の内壁とのすき間', judge(A.wall, f(A.wall))],
-    ['穴の傾き（鉛直から）', f(P.TILT, '°')],
+    ['傾き（鉛直から）', A.tmax - A.tmin < .05 ? f(A.tmax, '°')
+        : `${A.tmin.toFixed(1)}〜${A.tmax.toFixed(1)}°`],
   ].map(([n,v]) => `<div><span class="n">${n}</span><span class="val">${v}</span></div>`).join('')
-    + (bad ? '<div class="ng" style="margin-top:4px">干渉あり: 傾き・本数・穴の半径を見直す</div>' : '');
+    + (bad ? '<div class="ng" style="margin-top:4px">干渉あり: 傾き・本数・スティック径を見直す</div>' : '');
 }
 
 // ── 視点 ──────────────────────────────────────────────────────────────
 function setView(kind){
-  const R = Math.max(P.BD, 60), h = P.SL + P.PL, cz = P.PL - P.DEPTH/2 + h/3;
-  const dist = Math.max(h, R*2) * 1.15;
+  const h = P.SL + P.PL, cz = P.PL - P.DEPTH/2 + h/3;
+  const dist = Math.max(h, P.BD*2) * 1.15;
   ctl.target.set(0, 0, cz);
-  if (kind === 'top')   cam.position.set(0.01, 0, cz + dist);
+  if (kind === 'top')        cam.position.set(0.01, 0, cz + dist);
   else if (kind === 'front') cam.position.set(0, -dist, cz);
-  else cam.position.set(-dist*.62, -dist*.62, cz + dist*.42);
+  else                       cam.position.set(-dist*.62, -dist*.62, cz + dist*.42);
   ctl.update();
 }
 
 // ── UI ────────────────────────────────────────────────────────────────
 const UNIT = {N:'本', TILT:'°', TWIST:'°', THROAT:'mm', SD:'mm', SL:'mm', BD:'mm', DEPTH:'mm', MD:'mm', PL:'mm'};
+const KEY = 'diffuser-stick-spread';
+const save = () => { try{ localStorage.setItem(KEY, JSON.stringify(P)); }catch(e){} };
+
 function syncUI(){
   for (const k of KEYS){
     $(k).value = P[k];
     $(k+'_v').textContent = (k === 'N' ? P[k] : (+P[k]).toFixed(1)) + UNIT[k];
   }
+  const m10 = P.MODE === 10;
+  $('row_N').classList.toggle('off', m10);         // 10本版は配置固定
+  $('row_TWIST').classList.toggle('off', m10);
+  $('row_THROAT').classList.toggle('off', m10);
+  $('tiltLabel').textContent = m10 ? '外側の傾き' : '傾き';
+  $('N_v').textContent = m10 ? '10本' : P.N + '本';
+  $('modeNote').textContent = m10
+    ? '実際に印刷した版。10本を仕切り壁の部屋に通し、断面ごと回しながら開くので互いに交わらない。'
+    : '初期版。円周に並べた5つの丸穴。接線方向にねじって開く。';
+  for (const b of document.querySelectorAll('[data-mode]')) b.classList.toggle('on', +b.dataset.mode === P.MODE);
 }
 for (const k of KEYS){
   $(k).addEventListener('input', () => {
@@ -259,19 +309,19 @@ for (const k of KEYS){
     syncUI(); render(); save();
   });
 }
-$('reset').onclick = () => { Object.assign(P, DEF); syncUI(); render(); setView('iso'); save(); };
+for (const b of document.querySelectorAll('[data-mode]'))
+  b.onclick = () => { P.MODE = +b.dataset.mode; syncUI(); render(); save(); };
 for (const b of document.querySelectorAll('[data-view]')) b.onclick = () => setView(b.dataset.view);
+$('reset').onclick = () => { Object.assign(P, DEF); syncUI(); render(); setView('iso'); save(); };
 
-const KEY = 'diffuser-stick-spread';
-const save = () => { try{ localStorage.setItem(KEY, JSON.stringify(P)); }catch(e){} };
 try{
   const s = JSON.parse(localStorage.getItem(KEY) || '{}');
-  for (const k of KEYS) if (typeof s[k] === 'number') P[k] = s[k];
+  for (const k of [...KEYS,'MODE']) if (typeof s[k] === 'number') P[k] = s[k];
 }catch(e){}
 
 function resize(){
-  const w = innerWidth, h = innerHeight;
-  renderer.setSize(w, h, false); cam.aspect = w/h; cam.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight, false);
+  cam.aspect = innerWidth/innerHeight; cam.updateProjectionMatrix();
 }
 addEventListener('resize', resize);
 resize(); syncUI(); render(); setView('iso');
