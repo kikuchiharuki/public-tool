@@ -96,7 +96,9 @@ import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 
 // 座標: z=0 が差し込み部の下端、z=PL が瓶の口（サポーターのツバの下）。瓶の中は z<PL。
-const DEF = {N:5, TILT:12, TWIST:90, THROAT:3.8, SD:3.0, SL:240, BD:60, DEPTH:62, MD:16.8, PL:15};
+// 既定値は diffuser_stick_support.py の実測・設計値（SLはcheck_10.pyで見ている長さ250mm、
+// 胴の直径だけは実測データが無いので見た目用の60mm）
+const DEF = {N:5, TILT:12, TWIST:90, THROAT:3.8, SD:3.0, SL:250, BD:60, DEPTH:62, MD:16.8, PL:15};
 const KEYS = Object.keys(DEF);
 const P = {...DEF};
 const FLANGE_W = 3.75, FLANGE_T = 0.8, NECK_H = 17, SHOULDER_H = 18, PLUG_GAP = 0.2;
