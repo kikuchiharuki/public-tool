@@ -161,8 +161,9 @@ function buildBottle(){
   const Rb = P.BD/2, Rm = P.MD/2, zb = zBottom(), zNeck = P.PL - NECK_H, zSh = zNeck - SHOULDER_H;
   const pts = [[0,zb],[Rb,zb],[Rb,Math.max(zSh,zb)],[Rm,zNeck],[Rm,P.PL]]
     .map(([r,z]) => new THREE.Vector2(r, z));
-  const g = new THREE.LatheGeometry(pts, 64);
-  root.add(new THREE.Mesh(g, matGlass));
+  // LatheGeometryはY軸まわりに回すので、Z上の座標系に合わせて倒す
+  const m = new THREE.Mesh(new THREE.LatheGeometry(pts, 64), matGlass);
+  m.rotation.x = Math.PI/2; root.add(m);
 }
 
 function buildPlug(){
