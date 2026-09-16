@@ -108,13 +108,16 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 // 座標: z=0 が差し込み部の下端、z=PL が瓶の口の上端。瓶の中は z<PL。
 // 既定値は実機の設計/実測（diffuser_stick_support.py・bottle_dummy.py）:
 //   口の穴16.8 / 差し込み長15 / 中の深さ62 / スティックφ3.0・長さ250 / 胴の外径70.2
-const DEF = {MODE:10, N:5, TILT:10, TWIST:90, THROAT:3.8, SD:3.0, SL:250,
+// TILT=5本版の傾き(12°)、TOUT=10本版の一番外側の傾き(10°)。傾きスライダーはモードごとに別の値を持つ。
+const DEF = {MODE:5, N:5, TILT:12, TOUT:10, TWIST:90, THROAT:3.8, SD:3.0, SL:250,
              BD:70.2, DEPTH:62, MD:16.8, PL:15};
 const KEYS = ['N','TILT','TWIST','THROAT','SD','SL','BD','DEPTH','MD','PL'];
+const tiltKey = () => P.MODE === 10 ? 'TOUT' : 'TILT';
 const P = {...DEF};
 // サポーターと瓶の固定寸法（実測・設計値）
 const FLANGE_W = 3.75, FLANGE_T = 0.8, PLUG_GAP = 0.2;   // ツバ張り出し/厚み・口とのすき間
-const NECK_H = 16.6, NECK_D = 26.8, BODY_H = 54.8, INNER_WALL = 4.0;
+const NECK_H = 16.6, NECK_D = 26.8, BODY_H = 54.8;
+const INNER_WALL = 4.0, BOTTOM_T = 9.0;                  // 胴の壁厚・底の厚み（実測）
 const OUTER_WALL = 0.6, CELL_GAP = 0.35;                 // 10本版: 外周肉厚・部屋のすき間
 
 // 10本版の断面レイアウト（z=ZTでの軸位置を半径上限で正規化したもの。最小間隔を最大化した実機の配置）
@@ -156,7 +159,7 @@ function geom10(){
   const ZT = (P.PL + FLANGE_T)/2;
   const cellR = P.SD/2 + CELL_GAP;
   const R0 = Math.max(0.1, plugD()/2 - OUTER_WALL - cellR);   // 端での軸位置の半径上限
-  const K = Math.tan(P.TILT*Math.PI/180) / R0;                // ねじれ率[1/mm]
+  const K = Math.tan(P.TOUT*Math.PI/180) / R0;                // ねじれ率[1/mm]
   const R = R0 / Math.hypot(1, ZT*K);                         // z=ZTでの半径上限
   return {ZT, K, R};
 }
@@ -202,7 +205,8 @@ function zCyl(r, h, z0, mat){                      // z0から高さhの円柱�
 }
 
 function buildBottle(){
-  const zNeck = P.PL - NECK_H, zBody = zNeck - BODY_H;
+  // 底の外面は「中の底 - 底の厚み」。胴の高さの実測54.8とは0.4mm差（実測誤差）が出る。
+  const zNeck = P.PL - NECK_H, zBody = zBottom() - BOTTOM_T;
   const pts = [[0,zBody],[P.BD/2,zBody],[P.BD/2,zNeck],[NECK_D/2,zNeck],[NECK_D/2,P.PL]]
     .map(([r,z]) => new THREE.Vector2(r, z));
   // LatheGeometryはY軸まわりに回すので、Z上の座標系に合わせて倒す
@@ -288,8 +292,9 @@ const save = () => { try{ localStorage.setItem(KEY, JSON.stringify(P)); }catch(e
 
 function syncUI(){
   for (const k of KEYS){
-    $(k).value = P[k];
-    $(k+'_v').textContent = (k === 'N' ? P[k] : (+P[k]).toFixed(1)) + UNIT[k];
+    const v = k === 'TILT' ? P[tiltKey()] : P[k];
+    $(k).value = v;
+    $(k+'_v').textContent = (k === 'N' ? v : (+v).toFixed(1)) + UNIT[k];
   }
   const m10 = P.MODE === 10;
   $('row_N').classList.toggle('off', m10);         // 10本版は配置固定
@@ -304,7 +309,7 @@ function syncUI(){
 }
 for (const k of KEYS){
   $(k).addEventListener('input', () => {
-    P[k] = +$(k).value;
+    P[k === 'TILT' ? tiltKey() : k] = +$(k).value;
     if (k === 'MD') P.THROAT = Math.min(P.THROAT, P.MD/2);
     syncUI(); render(); save();
   });
@@ -316,7 +321,7 @@ $('reset').onclick = () => { Object.assign(P, DEF); syncUI(); render(); setView(
 
 try{
   const s = JSON.parse(localStorage.getItem(KEY) || '{}');
-  for (const k of [...KEYS,'MODE']) if (typeof s[k] === 'number') P[k] = s[k];
+  for (const k of [...KEYS,'MODE','TOUT']) if (typeof s[k] === 'number') P[k] = s[k];
 }catch(e){}
 
 function resize(){
