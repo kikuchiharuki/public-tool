@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ディフューザー 開き具合シミュレータ</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%23C1531F'/%3E%3Cpath d='M50 62V20M50 62 22 14M50 62 78 14' stroke='%23fff' stroke-width='6' stroke-linecap='round'/%3E%3Crect x='33' y='62' width='34' height='22' rx='5' fill='%23fff'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#f2f2ef; --panel:#ffffffee; --line:#dcdad4; --ink:#25262a; --dim:#8b8b86;
+    --accent:#2f6fbe; --ng:#c4453a; --ok:#2f7d4f; --shadow:0 2px 14px rgba(0,0,0,.14);
+  }
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);
+    font:13px/1.5 -apple-system,"Hiragino Sans",sans-serif;color:var(--ink);
+    -webkit-font-smoothing:antialiased}
+  #c{position:absolute;inset:0;width:100vw;height:100vh;display:block;touch-action:none}
+
+  .panel{position:absolute;top:10px;left:10px;z-index:3;width:264px;max-height:calc(100vh - 20px);
+    overflow:auto;background:var(--panel);backdrop-filter:blur(8px);border-radius:11px;
+    padding:10px 12px;box-shadow:var(--shadow)}
+  .panel h1{font-size:14px;margin:0 0 2px}
+  .panel .lead{font-size:11px;color:var(--dim);margin:0 0 8px}
+  .grp{border-top:1px solid var(--line);margin-top:8px;padding-top:7px}
+  .grp>b{font-size:11px;color:var(--dim);letter-spacing:.5px}
+  .row{display:flex;align-items:center;gap:7px;margin-top:5px}
+  .row label{flex:0 0 78px;font-size:12px}
+  .row input[type=range]{flex:1;min-width:0;accent-color:var(--accent)}
+  .row .v{flex:0 0 52px;text-align:right;font-variant-numeric:tabular-nums;font-size:12px}
+  .btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+  button{font:12px/1 inherit;padding:6px 9px;border:1px solid var(--line);border-radius:7px;
+    background:#fff;color:var(--ink);cursor:pointer}
+  button:hover{border-color:#b9b6ae;background:#faf9f7}
+  button.on{background:#e7effa;border-color:#7aa7dd;color:#1d4f8f}
+  .out{margin-top:6px;font-size:12px}
+  .out div{display:flex;justify-content:space-between;gap:8px;padding:2px 0}
+  .out .n{color:var(--dim)}
+  .out .val{font-variant-numeric:tabular-nums}
+  .ng{color:var(--ng);font-weight:bold}
+  .ok{color:var(--ok)}
+  .hint{position:absolute;right:10px;bottom:10px;z-index:3;background:var(--panel);
+    border-radius:9px;padding:6px 10px;font-size:11px;color:var(--dim);box-shadow:var(--shadow)}
+  @media (max-width:560px){
+    .panel{right:10px;width:auto;max-height:46vh}
+    .hint{display:none}
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="panel">
+  <h1>🪷 ディフューザー 開き具合シミュレータ</h1>
+  <p class="lead">サポーターの穴の角度を変えて、スティックの開き方と干渉を試す。</p>
+
+  <div class="grp"><b>スティック</b>
+    <div class="row"><label>本数</label><input type="range" id="N" min="3" max="12" step="1"><span class="v" id="N_v"></span></div>
+    <div class="row"><label>傾き</label><input type="range" id="TILT" min="0" max="30" step="0.5"><span class="v" id="TILT_v"></span></div>
+    <div class="row"><label>ねじり</label><input type="range" id="TWIST" min="0" max="90" step="5"><span class="v" id="TWIST_v"></span></div>
+    <div class="row"><label>穴の半径</label><input type="range" id="THROAT" min="0" max="7" step="0.1"><span class="v" id="THROAT_v"></span></div>
+    <div class="row"><label>スティック径</label><input type="range" id="SD" min="1.5" max="5" step="0.1"><span class="v" id="SD_v"></span></div>
+    <div class="row"><label>長さ</label><input type="range" id="SL" min="120" max="350" step="5"><span class="v" id="SL_v"></span></div>
+  </div>
+
+  <div class="grp"><b>瓶</b>
+    <div class="row"><label>胴の直径</label><input type="range" id="BD" min="30" max="110" step="1"><span class="v" id="BD_v"></span></div>
+    <div class="row"><label>深さ</label><input type="range" id="DEPTH" min="30" max="140" step="1"><span class="v" id="DEPTH_v"></span></div>
+    <div class="row"><label>口の内径</label><input type="range" id="MD" min="10" max="30" step="0.1"><span class="v" id="MD_v"></span></div>
+  </div>
+
+  <div class="grp"><b>サポーター</b>
+    <div class="row"><label>差し込み長</label><input type="range" id="PL" min="5" max="30" step="0.5"><span class="v" id="PL_v"></span></div>
+  </div>
+
+  <div class="grp"><b>結果</b>
+    <div class="out" id="out"></div>
+  </div>
+
+  <div class="grp"><b>視点・プリセット</b>
+    <div class="btns">
+      <button data-view="iso">斜め</button>
+      <button data-view="front">正面</button>
+      <button data-view="top">真上</button>
+      <button id="reset">実機の値に戻す</button>
+    </div>
+  </div>
+</div>
+
+<div class="hint">ドラッグ=回転 / ホイール=ズーム / 右ドラッグ=平行移動</div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.170.0/build/three.module.js",
+            "three/addons/":"https://unpkg.com/three@0.170.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+// 座標: z=0 が差し込み部の下端、z=PL が瓶の口（サポーターのツバの下）。瓶の中は z<PL。
+const DEF = {N:5, TILT:12, TWIST:90, THROAT:3.8, SD:3.0, SL:240, BD:60, DEPTH:62, MD:16.8, PL:15};
+const KEYS = Object.keys(DEF);
+const P = {...DEF};
+const FLANGE_W = 3.75, FLANGE_T = 0.8, NECK_H = 17, SHOULDER_H = 18, PLUG_GAP = 0.2;
+
+const $ = id => document.getElementById(id);
+const canvas = $('c');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xf2f2ef);
+const cam = new THREE.PerspectiveCamera(40, 1, 1, 5000); cam.up.set(0,0,1);
+const ctl = new OrbitControls(cam, canvas);
+ctl.enableDamping = true; ctl.dampingFactor = .12; ctl.screenSpacePanning = true;
+ctl.minPolarAngle = 1e-3; ctl.maxPolarAngle = Math.PI - 1e-3;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8a80, 1.0));
+const sun = new THREE.DirectionalLight(0xffffff, 1.3); sun.position.set(-1,-1.2,2); scene.add(sun);
+const root = new THREE.Group(); scene.add(root);
+
+// ── 幾何 ──────────────────────────────────────────────────────────────
+// スティックの中心線: z=0 での点 p と単位方向 d。
+// ねじり0°=真横に開くだけ、90°=接線方向にねじって開く（互いに交わらない双曲面の母線）。
+function stickLine(i){
+  const phi = 2*Math.PI*i/P.N;
+  const t = P.TILT*Math.PI/180, b = P.TWIST*Math.PI/180;
+  const sr = Math.sin(t)*Math.cos(b), st = Math.sin(t)*Math.sin(b);
+  return {
+    p: new THREE.Vector3(P.THROAT*Math.cos(phi), P.THROAT*Math.sin(phi), 0),
+    d: new THREE.Vector3(Math.cos(phi)*sr - Math.sin(phi)*st,
+                         Math.sin(phi)*sr + Math.cos(phi)*st, Math.cos(t))
+  };
+}
+const at = (L, z) => L.p.clone().addScaledVector(L.d, z / L.d.z);   // 中心線上の高さzの点
+const zBottom = () => P.PL - P.DEPTH;
+// 瓶の内側の半径（高さzで）。口→肩→胴。
+function rInner(z){
+  const zNeck = P.PL - NECK_H, zSh = zNeck - SHOULDER_H, Rb = P.BD/2, Rm = P.MD/2;
+  if (z >= zNeck) return Rm;
+  if (z >= zSh) return Rm + (Rb - Rm) * (zNeck - z) / SHOULDER_H;
+  return Rb;
+}
+
+// ── 描画 ──────────────────────────────────────────────────────────────
+const matStick = new THREE.MeshStandardMaterial({color:0xd8ccb8, roughness:.8, metalness:0});
+const matStickNG = new THREE.MeshStandardMaterial({color:0xc4453a, roughness:.8, metalness:0});
+const matPlug = new THREE.MeshStandardMaterial({color:0x59605f, roughness:.6, metalness:0,
+  transparent:true, opacity:.55});
+const matGlass = new THREE.MeshStandardMaterial({color:0x8fb8c8, roughness:.25, metalness:0,
+  transparent:true, opacity:.22, side:THREE.DoubleSide});
+const Y = new THREE.Vector3(0,1,0);
+
+function clear(g){ for(const o of g.children.slice()){ g.remove(o); o.geometry?.dispose(); } }
+
+function rod(a, b, r, mat){                        // a→b の円柱
+  const v = b.clone().sub(a), len = v.length();
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 24), mat);
+  m.quaternion.setFromUnitVectors(Y, v.clone().normalize());
+  m.position.copy(a).addScaledVector(v, .5);
+  return m;
+}
+
+function buildBottle(){
+  const Rb = P.BD/2, Rm = P.MD/2, zb = zBottom(), zNeck = P.PL - NECK_H, zSh = zNeck - SHOULDER_H;
+  const pts = [[0,zb],[Rb,zb],[Rb,Math.max(zSh,zb)],[Rm,zNeck],[Rm,P.PL]]
+    .map(([r,z]) => new THREE.Vector2(r, z));
+  const g = new THREE.LatheGeometry(pts, 64);
+  root.add(new THREE.Mesh(g, matGlass));
+}
+
+function buildPlug(){
+  const D = P.MD - PLUG_GAP;
+  const plug = new THREE.Mesh(new THREE.CylinderGeometry(D/2, D/2, P.PL, 48), matPlug);
+  plug.rotation.x = Math.PI/2; plug.position.z = P.PL/2; root.add(plug);
+  const fl = new THREE.Mesh(new THREE.CylinderGeometry(D/2+FLANGE_W, D/2+FLANGE_W, FLANGE_T, 48), matPlug);
+  fl.rotation.x = Math.PI/2; fl.position.z = P.PL + FLANGE_T/2; root.add(fl);
+}
+
+// ── 計算（干渉と広がり）─────────────────────────────────────────────────
+function analyze(){
+  const lines = Array.from({length:P.N}, (_,i) => stickLine(i));
+  const zb = zBottom(), r = P.SD/2;
+  // スティックは下端を瓶底に置く。長さが足りなければ届く所まで。
+  const ends = lines.map(L => {
+    const tBottom = zb / L.d.z, tTop = tBottom + P.SL;
+    return {a: L.p.clone().addScaledVector(L.d, tBottom), b: L.p.clone().addScaledVector(L.d, tTop), L};
+  });
+  const zTop = ends[0].b.z;
+
+  // スティック同士: 中心間距離の最小（下端〜上端を等分サンプル）
+  let gap = Infinity;
+  if (P.N > 1){
+    const S = 200;
+    for (let s = 0; s <= S; s++){
+      const pts = ends.map(e => e.a.clone().lerp(e.b, s/S));
+      for (let i = 0; i < pts.length; i++)
+        for (let j = i+1; j < pts.length; j++)
+          gap = Math.min(gap, pts[i].distanceTo(pts[j]));
+    }
+    gap -= P.SD;
+  }
+  // 瓶の内壁とのすき間（瓶の中の範囲だけ）
+  let wall = Infinity;
+  for (const e of ends){
+    for (let s = 0; s <= 120; s++){
+      const z = zb + (Math.min(P.PL, e.b.z) - zb) * s/120;
+      if (z > P.PL) break;
+      const c = at(e.L, z);
+      wall = Math.min(wall, rInner(z) - Math.hypot(c.x, c.y) - r);
+    }
+  }
+  const spread = 2 * Math.max(...ends.map(e => Math.hypot(e.b.x, e.b.y) + r));
+  const reach = zTop - P.PL;                       // 瓶の口から上に出ている長さ
+  return {lines, ends, gap, wall, spread, reach, zTop};
+}
+
+function render(){
+  clear(root);
+  const A = analyze();
+  buildBottle(); buildPlug();
+  const bad = A.gap < 0 || A.wall < 0;
+  for (const e of A.ends) root.add(rod(e.a, e.b, P.SD/2, bad ? matStickNG : matStick));
+
+  const f = (v, u='mm') => v.toFixed(1) + u;
+  const judge = (v, t) => v < 0 ? `<span class="ng">${t}</span>` : `<span class="ok">${t}</span>`;
+  $('out').innerHTML = [
+    ['先端の広がり（直径）', f(A.spread)],
+    ['瓶の口から出る長さ', f(A.reach)],
+    ['スティック同士のすき間', judge(A.gap, P.N > 1 ? f(A.gap) : '—')],
+    ['瓶の内壁とのすき間', judge(A.wall, f(A.wall))],
+    ['穴の傾き（鉛直から）', f(P.TILT, '°')],
+  ].map(([n,v]) => `<div><span class="n">${n}</span><span class="val">${v}</span></div>`).join('')
+    + (bad ? '<div class="ng" style="margin-top:4px">干渉あり: 傾き・本数・穴の半径を見直す</div>' : '');
+}
+
+// ── 視点 ──────────────────────────────────────────────────────────────
+function setView(kind){
+  const R = Math.max(P.BD, 60), h = P.SL + P.PL, cz = P.PL - P.DEPTH/2 + h/3;
+  const dist = Math.max(h, R*2) * 1.15;
+  ctl.target.set(0, 0, cz);
+  if (kind === 'top')   cam.position.set(0.01, 0, cz + dist);
+  else if (kind === 'front') cam.position.set(0, -dist, cz);
+  else cam.position.set(-dist*.62, -dist*.62, cz + dist*.42);
+  ctl.update();
+}
+
+// ── UI ────────────────────────────────────────────────────────────────
+const UNIT = {N:'本', TILT:'°', TWIST:'°', THROAT:'mm', SD:'mm', SL:'mm', BD:'mm', DEPTH:'mm', MD:'mm', PL:'mm'};
+function syncUI(){
+  for (const k of KEYS){
+    $(k).value = P[k];
+    $(k+'_v').textContent = (k === 'N' ? P[k] : (+P[k]).toFixed(1)) + UNIT[k];
+  }
+}
+for (const k of KEYS){
+  $(k).addEventListener('input', () => {
+    P[k] = +$(k).value;
+    if (k === 'MD') P.THROAT = Math.min(P.THROAT, P.MD/2);
+    syncUI(); render(); save();
+  });
+}
+$('reset').onclick = () => { Object.assign(P, DEF); syncUI(); render(); setView('iso'); save(); };
+for (const b of document.querySelectorAll('[data-view]')) b.onclick = () => setView(b.dataset.view);
+
+const KEY = 'diffuser-stick-spread';
+const save = () => { try{ localStorage.setItem(KEY, JSON.stringify(P)); }catch(e){} };
+try{
+  const s = JSON.parse(localStorage.getItem(KEY) || '{}');
+  for (const k of KEYS) if (typeof s[k] === 'number') P[k] = s[k];
+}catch(e){}
+
+function resize(){
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false); cam.aspect = w/h; cam.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+resize(); syncUI(); render(); setView('iso');
+(function loop(){ requestAnimationFrame(loop); ctl.update(); renderer.render(scene, cam); })();
+</script>
+</body>
+</html>
