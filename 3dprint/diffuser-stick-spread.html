@@ -107,10 +107,10 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 
 // 座標: z=0 が差し込み部の下端、z=PL が瓶の口の上端。瓶の中は z<PL。
 // 既定値は実機の設計/実測（diffuser_stick_support.py・bottle_dummy.py）:
-//   口の穴16.8 / 差し込み長15 / 中の深さ62 / スティックφ3.0・長さ250 / 胴の外径70.2
+//   口の穴16.8 / 差し込み長15 / 中の深さ62 / スティックφ3.0・長さ250 / 胴の外径70.5
 // TILT=5本版の傾き(12°)、TOUT=10本版の一番外側の傾き(10°)。傾きスライダーはモードごとに別の値を持つ。
 const DEF = {MODE:5, N:5, TILT:12, TOUT:10, TWIST:90, THROAT:3.8, SD:3.0, SL:250,
-             BD:70.2, DEPTH:62, MD:16.8, PL:15};
+             BD:70.5, DEPTH:62, MD:16.8, PL:15};
 const KEYS = ['N','TILT','TWIST','THROAT','SD','SL','BD','DEPTH','MD','PL'];
 const tiltKey = () => P.MODE === 10 ? 'TOUT' : 'TILT';
 const P = {...DEF};
@@ -289,7 +289,7 @@ function setView(kind){
 const UNIT = {N:'本', TILT:'°', TWIST:'°', THROAT:'mm', SD:'mm', SL:'mm', BD:'mm', DEPTH:'mm', MD:'mm', PL:'mm'};
 // 保存キーに版番号を付ける。既定値を実測値に入れ替えたとき、前に開いた人の古い保存値が
 // そのまま残って「既定値のはずが違う」状態になるのを避けるため。既定値を変えたら上げる。
-const KEY = 'diffuser-stick-spread.v2';
+const KEY = 'diffuser-stick-spread.v3';
 const save = () => { try{ localStorage.setItem(KEY, JSON.stringify(P)); }catch(e){} };
 
 function syncUI(){
