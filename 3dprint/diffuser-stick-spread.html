@@ -287,7 +287,9 @@ function setView(kind){
 
 // ── UI ────────────────────────────────────────────────────────────────
 const UNIT = {N:'本', TILT:'°', TWIST:'°', THROAT:'mm', SD:'mm', SL:'mm', BD:'mm', DEPTH:'mm', MD:'mm', PL:'mm'};
-const KEY = 'diffuser-stick-spread';
+// 保存キーに版番号を付ける。既定値を実測値に入れ替えたとき、前に開いた人の古い保存値が
+// そのまま残って「既定値のはずが違う」状態になるのを避けるため。既定値を変えたら上げる。
+const KEY = 'diffuser-stick-spread.v2';
 const save = () => { try{ localStorage.setItem(KEY, JSON.stringify(P)); }catch(e){} };
 
 function syncUI(){
