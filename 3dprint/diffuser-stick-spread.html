@@ -118,12 +118,12 @@ const P = {...DEF};
 const FLANGE_W = 3.75, FLANGE_T = 0.8, PLUG_GAP = 0.2;   // ツバ張り出し/厚み・口とのすき間
 const NECK_H = 16.6, NECK_D = 26.8, BODY_H = 54.8;
 const INNER_WALL = 4.0, BOTTOM_T = 9.0;                  // 胴の壁厚・底の厚み（実測）
-const OUTER_WALL = 0.6, CELL_GAP = 0.35;                 // 10本版: 外周肉厚・部屋のすき間
+const BORE_GAP = 0.2;     // 10本版: スティック外面と瓶の口の内面のすき間（外壁は作らず口が壁になる）
 
 // 10本版の断面レイアウト（z=ZTでの軸位置を半径上限で正規化したもの。最小間隔を最大化した実機の配置）
-const PTS10 = [[-0.96553,-0.26028],[0.33962,0.94056],[-0.21596,0.23472],[-0.37126,0.92853],
-               [-0.89447,0.44713],[-0.54853,-0.83613],[0.14575,-0.98932],[0.87882,0.47715],
-               [0.97379,-0.22746],[0.26543,-0.28849]];
+const PTS10 = [[-0.31895,0.00111],[0.82869,0.55971],[-0.4653,-0.88515],[0.24052,-0.97065],
+               [-0.93592,-0.35222],[-0.45911,0.88838],[0.39202,-0.00137],[-0.93343,0.35875],
+               [0.24729,0.96894],[0.82476,-0.56549]];
 
 const $ = id => document.getElementById(id);
 const canvas = $('c');
@@ -157,8 +157,7 @@ function line5(i){
 // 10本版: 断面が高さに応じて回転・拡大するだけの直線群。外側ほど傾きが大きく、互いに交わらない。
 function geom10(){
   const ZT = (P.PL + FLANGE_T)/2;
-  const cellR = P.SD/2 + CELL_GAP;
-  const R0 = Math.max(0.1, plugD()/2 - OUTER_WALL - cellR);   // 端での軸位置の半径上限
+  const R0 = Math.max(0.1, P.MD/2 - P.SD/2 - BORE_GAP);     // 端での軸位置の半径上限（瓶の口で決まる）
   const K = Math.tan(P.TOUT*Math.PI/180) / R0;                // ねじれ率[1/mm]
   const R = R0 / Math.hypot(1, ZT*K);                         // z=ZTでの半径上限
   return {ZT, K, R};
@@ -240,17 +239,19 @@ function analyze(){
     }
     gap -= P.SD;
   }
-  let wall = Infinity;                             // 瓶の内壁とのすき間（瓶の中だけ）
+  // 瓶とのすき間。口（首の穴）は壁の役なのでスティックが接触してよい。胴の中で壁に当たるのはNG。
+  let bore = Infinity, wall = Infinity;
+  const zNeck = P.PL - NECK_H - INNER_WALL;
   for (const e of ends){
     for (let s = 0; s <= 120; s++){
       const z = zb + (P.PL - zb) * s/120;
-      const c = at(e.L, z);
-      wall = Math.min(wall, rInner(z) - Math.hypot(c.x, c.y) - r);
+      const c = at(e.L, z), g = rInner(z) - Math.hypot(c.x, c.y) - r;
+      if (z >= zNeck) bore = Math.min(bore, g); else wall = Math.min(wall, g);
     }
   }
   const spread = 2 * Math.max(...ends.map(e => Math.hypot(e.b.x, e.b.y) + r));
   const tilts = lines.map(L => Math.acos(L.d.z) * 180/Math.PI);
-  return {ends, gap, wall, spread, reach: ends[0].b.z - P.PL,
+  return {ends, gap, bore, wall, spread, reach: ends[0].b.z - P.PL,
           tmin: Math.min(...tilts), tmax: Math.max(...tilts)};
 }
 
@@ -258,7 +259,8 @@ function render(){
   clear(root);
   const A = analyze();
   buildBottle(); buildPlug();
-  const bad = A.gap < 0 || A.wall < 0;
+  const TOUCH = 0.05;                             // これ以下のめり込みは「接触」とみなす（計算誤差）
+  const bad = A.gap < 0 || A.wall < 0 || A.bore < -TOUCH;
   for (const e of A.ends) root.add(rod(e.a, e.b, P.SD/2, bad ? matStickNG : matStick));
 
   const f = (v, u='mm') => v.toFixed(1) + u;
@@ -267,7 +269,9 @@ function render(){
     ['先端の広がり（直径）', f(A.spread)],
     ['瓶の口から出る長さ', f(A.reach)],
     ['スティック同士のすき間', nSticks() > 1 ? judge(A.gap, f(A.gap)) : '—'],
-    ['瓶の内壁とのすき間', judge(A.wall, f(A.wall))],
+    ['瓶の口とのすき間', A.bore < -TOUCH ? `<span class="ng">口より外（${f(A.bore)}）</span>`
+        : A.bore <= TOUCH ? '<span class="ok">接触（口が受ける）</span>' : judge(A.bore, f(A.bore))],
+    ['胴の内壁とのすき間', judge(A.wall, f(A.wall))],
     ['傾き（鉛直から）', A.tmax - A.tmin < .05 ? f(A.tmax, '°')
         : `${A.tmin.toFixed(1)}〜${A.tmax.toFixed(1)}°`],
   ].map(([n,v]) => `<div><span class="n">${n}</span><span class="val">${v}</span></div>`).join('')
@@ -289,7 +293,7 @@ function setView(kind){
 const UNIT = {N:'本', TILT:'°', TWIST:'°', THROAT:'mm', SD:'mm', SL:'mm', BD:'mm', DEPTH:'mm', MD:'mm', PL:'mm'};
 // 保存キーに版番号を付ける。既定値を実測値に入れ替えたとき、前に開いた人の古い保存値が
 // そのまま残って「既定値のはずが違う」状態になるのを避けるため。既定値を変えたら上げる。
-const KEY = 'diffuser-stick-spread.v3';
+const KEY = 'diffuser-stick-spread.v4';
 const save = () => { try{ localStorage.setItem(KEY, JSON.stringify(P)); }catch(e){} };
 
 function syncUI(){
@@ -305,7 +309,7 @@ function syncUI(){
   $('tiltLabel').textContent = m10 ? '外側の傾き' : '傾き';
   $('N_v').textContent = m10 ? '10本' : P.N + '本';
   $('modeNote').textContent = m10
-    ? '実際に印刷した版。10本を仕切り壁の部屋に通し、断面ごと回しながら開くので互いに交わらない。'
+    ? '10本を仕切り壁の部屋に通し、断面ごと回しながら開くので互いに交わらない。外壁は作らず、瓶の口が壁の役をする（スティックは口に接触してよい）。'
     : '初期版。円周に並べた5つの丸穴。接線方向にねじって開く。';
   for (const b of document.querySelectorAll('[data-mode]')) b.classList.toggle('on', +b.dataset.mode === P.MODE);
 }
