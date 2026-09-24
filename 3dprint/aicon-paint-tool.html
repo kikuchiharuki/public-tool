@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AICONペイントツール</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Hiragino Sans", sans-serif;
+    background: #f5f4f0; color: #222;
+    display: flex; min-height: 100vh;
+  }
+  #panel {
+    width: 400px; flex-shrink: 0; padding: 20px 18px;
+    background: #fff; border-right: 1px solid #ddd;
+    display: flex; flex-direction: column; gap: 16px;
+    overflow-y: auto;
+    position: relative; z-index: 100;   /* ヘルプ吹き出しをアートエリアより前面に */
+  }
+  h1 { font-size: 16px; font-weight: 600; }
+  h1 small { font-weight: 400; color: #888; font-size: 11px; display: block; margin-top: 2px; }
+  #drop {
+    border: 2px dashed #bbb; border-radius: 8px; padding: 18px 10px;
+    text-align: center; font-size: 12px; color: #777; cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  #drop.over { border-color: #4a7de0; background: #eef3fd; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
+  .span2 { grid-column: 1 / -1; }
+  .hint {
+    display: inline-block; width: 13px; height: 13px; line-height: 12px; text-align: center;
+    border: 1px solid #bbb; border-radius: 50%; color: #888; font-size: 9px;
+    cursor: help; margin-left: 4px; flex-shrink: 0; position: relative;
+  }
+  #tip {
+    position: fixed; display: none; width: 250px;
+    background: #333; color: #fff; font-size: 11px; line-height: 1.7;
+    padding: 8px 10px; border-radius: 6px; z-index: 1000;
+    text-align: left; font-weight: 400; pointer-events: none;
+  }
+  .ctl label { display: flex; justify-content: space-between; font-size: 12px; color: #555; margin-bottom: 4px; }
+  .ctl label output { font-weight: 600; color: #222; font-variant-numeric: tabular-nums; }
+  .ctl input[type=range] { width: 100%; }
+  .row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #555; }
+  .row input[type=checkbox] { width: 15px; height: 15px; }
+  button {
+    padding: 9px 12px; font-size: 13px; border: 1px solid #ccc; border-radius: 6px;
+    background: #fff; cursor: pointer; width: 100%;
+  }
+  button:hover { background: #f0f0f0; }
+  button.primary { background: #222; color: #fff; border-color: #222; }
+  button.primary:hover { background: #444; }
+  select { padding: 6px; font-size: 12px; border: 1px solid #ccc; border-radius: 6px; background: #fff; }
+  #stage {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    padding: 24px; overflow: auto;
+  }
+  #cv { max-width: 100%; max-height: calc(100vh - 48px); box-shadow: 0 2px 12px rgba(0,0,0,.12); background: #fff; }
+  .sep { border-top: 1px solid #eee; }
+  #info { font-size: 11px; color: #999; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div id="panel">
+  <h1>AICONペイントツール<small>等間隔平行線 × 太さ変調ハーフトーン</small></h1>
+
+  <div id="drop">画像をドロップ<br>またはクリックして選択</div>
+  <input type="file" id="file" accept="image/*" hidden>
+
+  <div class="grid2">
+    <div class="ctl span2">
+      <label><span>線のパターン<span class="hint" data-tip="線の走り方。直線・規則的な波線・中心から広がる同心円から選ぶ">?</span></span></label>
+      <select id="shape" style="width:100%;">
+        <option value="line">直線</option>
+        <option value="wave">波線</option>
+        <option value="circle">同心円</option>
+      </select>
+    </div>
+    <div class="ctl" id="g_angle">
+      <label><span>線の角度<span class="hint" data-tip="線の傾き。0°=水平、90°=垂直">?</span></span> <output id="o_angle">0°</output></label>
+      <input type="range" id="angle" min="0" max="180" step="1" value="0">
+    </div>
+    <div id="g_wave" style="display:none;">
+      <div class="ctl">
+        <label><span>波の振幅<span class="hint" data-tip="規則波のうねりの高さ。手書き揺らぎと違い全線が同じ形で波打つ">?</span></span> <output id="o_wamp">15px</output></label>
+        <input type="range" id="wamp" min="0" max="60" step="1" value="15">
+      </div>
+      <div class="ctl">
+        <label><span>波の波長<span class="hint" data-tip="波1周期の長さ。小さいほど細かくうねる">?</span></span> <output id="o_wvlen">80px</output></label>
+        <input type="range" id="wvlen" min="20" max="400" step="5" value="80">
+      </div>
+    </div>
+    <div id="g_center" style="display:none;">
+      <div class="ctl">
+        <label><span>中心X<span class="hint" data-tip="同心円の中心の横位置（画像幅に対する%）">?</span></span> <output id="o_ccx">50%</output></label>
+        <input type="range" id="ccx" min="0" max="100" step="1" value="50">
+      </div>
+      <div class="ctl">
+        <label><span>中心Y<span class="hint" data-tip="同心円の中心の縦位置（画像高さに対する%）">?</span></span> <output id="o_ccy">50%</output></label>
+        <input type="range" id="ccy" min="0" max="100" step="1" value="50">
+      </div>
+    </div>
+    <div class="ctl">
+      <label><span>線の間隔<span class="hint" data-tip="隣り合う線の中心同士の距離。小さいほど密で精細、大きいほど疎で大胆">?</span></span> <output id="o_spacing">8px</output></label>
+      <input type="range" id="spacing" min="3" max="40" step="1" value="8">
+    </div>
+    <div class="ctl">
+      <label><span>線の最大太さ<span class="hint" data-tip="画像の最も暗い部分での線の太さ。上限は間隔の110%（そこまで上げると暗部で隣の線とつながり黒ベタになる）">?</span></span> <output id="o_thick">6px</output></label>
+      <input type="range" id="thick" min="0.5" max="8.8" step="0.1" value="6">
+    </div>
+    <div class="ctl">
+      <label><span>白線の確保<span class="hint" data-tip="最も暗い部分でも必ず残す白い隙間の太さ。0だと暗部は黒ベタになる。上げると黒の中を白い線がシャープに走り続ける（彫刻的な精細感の要）">?</span></span> <output id="o_white">0px</output></label>
+      <input type="range" id="white" min="0" max="15" step="0.5" value="0">
+    </div>
+    <div class="ctl">
+      <label><span>エッジ強調<span class="hint" data-tip="明暗の境界で、白が黒線を実際より細く抉り、黒が白に食い込む（局所コントラスト強調）。ぼやっとした印象を消して彫り込んだような精細感を出す">?</span></span> <output id="o_edge">50%</output></label>
+      <input type="range" id="edge" min="0" max="200" step="5" value="50">
+    </div>
+    <div class="ctl">
+      <label><span>コントラスト(γ)<span class="hint" data-tip="明暗→太さの変換カーブ。1より大きいと暗部だけ強調され、小さいと中間調が持ち上がる">?</span></span> <output id="o_gamma">1.0</output></label>
+      <input type="range" id="gamma" min="0.3" max="3" step="0.05" value="1">
+    </div>
+    <div class="ctl">
+      <label><span>最小太さ(下限)<span class="hint" data-tip="最も明るい部分でも残す線の太さ（最大太さに対する%）。0だと明部で線が消える。3Dプリント時は消えない太さを確保するのに使う">?</span></span> <output id="o_minw">0%</output></label>
+      <input type="range" id="minw" min="0" max="50" step="1" value="0">
+    </div>
+    <div class="ctl">
+      <label><span>線端カット<span class="hint" data-tip="この太さ（最大太さに対する%）を下回った瞬間に線を打ち切る。0=先細りして閉じる（現状）。上げると輪郭でスパッとぶつ切りになる。「最小太さ(下限)」より大きくすると背景の線は消え、小さければ背景も線が続く">?</span></span> <output id="o_cut">0%</output></label>
+      <input type="range" id="cut" min="0" max="80" step="1" value="0">
+    </div>
+    <div class="ctl">
+      <label><span>輪郭の滑らかさ<span class="hint" data-tip="太さの変化を線に沿ってならす強さ。上げるとガタつきが消え、細部もなだらかになる">?</span></span> <output id="o_smooth">4px</output></label>
+      <input type="range" id="smooth" min="0" max="20" step="1" value="4">
+    </div>
+    <div class="ctl">
+      <label><span>手書き揺らぎ<span class="hint" data-tip="線ごとに異なるランダムな蛇行。手描きの風合いが出る。同じ設定なら毎回同じ結果になる">?</span></span> <output id="o_wobble">0%</output></label>
+      <input type="range" id="wobble" min="0" max="100" step="1" value="0">
+    </div>
+    <div class="ctl">
+      <label><span>揺らぎの波長<span class="hint" data-tip="蛇行のうねりの細かさ。小さいと神経質に、大きいとゆったり揺れる">?</span></span> <output id="o_wavelen">120px</output></label>
+      <input type="range" id="wavelen" min="20" max="400" step="5" value="120">
+    </div>
+    <div class="row span2"><input type="checkbox" id="invert"><label for="invert">明暗を反転（黒地に白線）</label><span class="hint" data-tip="明るい部分ほど線が太くなり、黒地に白い線で描いた見た目になる">?</span></div>
+  </div>
+
+  <div class="sep"></div>
+
+  <div class="row">
+    <span>PNG倍率</span>
+    <select id="pngscale">
+      <option value="1">1×</option>
+      <option value="2" selected>2×</option>
+      <option value="4">4×</option>
+      <option value="8">8×</option>
+    </select>
+  </div>
+  <button class="primary" id="expPng">PNGを書き出す</button>
+  <button id="expSvg">SVGを書き出す</button>
+
+  <div class="sep"></div>
+
+  <div class="row"><span style="min-width:86px;">幅 (mm)<span class="hint" data-tip="作品の横幅。高さは画像の縦横比から自動。A1 miniのプレートは180mmまで">?</span></span>
+    <input type="number" id="stlw" value="140" min="10" step="10" style="flex:1; padding:5px; font-size:12px; border:1px solid #ccc; border-radius:4px;"></div>
+  <div class="row"><span style="min-width:86px;">高さの変調<span class="hint" data-tip="線の太さに応じて天面の高さを変える。「太いほど高く」=暗部が盛り上がる。「太いほど低く」=暗部が谷になる（斜光で陰影が絵と一致）">?</span></span>
+    <select id="stlmod" style="flex:1;">
+      <option value="uniform">一定</option>
+      <option value="raise" selected>太いほど高く</option>
+      <option value="lower">太いほど低く</option>
+    </select></div>
+  <div class="row"><span style="min-width:86px;">線の高さ (mm)<span class="hint" data-tip="土台の上に盛り上がる線の最大高さ">?</span></span>
+    <input type="number" id="stlh" value="1.2" min="0.2" step="0.2" style="flex:1; padding:5px; font-size:12px; border:1px solid #ccc; border-radius:4px;"></div>
+  <div class="row"><span style="min-width:86px;">土台の厚さ (mm)<span class="hint" data-tip="線の下に敷く板の厚さ。0にすると線だけの立体になる">?</span></span>
+    <input type="number" id="stlb" value="2" min="0" step="0.5" style="flex:1; padding:5px; font-size:12px; border:1px solid #ccc; border-radius:4px;"></div>
+  <div style="font-size:11px; color:#999;">土台 0mm = 線だけを出力</div>
+  <button id="expStl">STLを書き出す（3Dプリント用）</button>
+
+  <div id="info">—</div>
+</div>
+<div id="stage"><canvas id="cv"></canvas></div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const cv = $('cv'), ctx = cv.getContext('2d');
+
+const MAX_DIM = 2200;           // 処理解像度の上限（長辺）
+let imgW = 0, imgH = 0;         // 処理解像度
+let lum = null;                 // グレースケール輝度 (0-255)
+let sat = null;                 // 輝度の積分画像（面積平均サンプリング用）
+let srcName = 'sample';
+
+// ---- パラメータ ----
+const params = {
+  shape: 'line', angle: 0, spacing: 8, thick: 6, gamma: 1, minw: 0, cut: 0, invert: false,
+  white: 0, edge: 0.5,
+  wobble: 0, wavelen: 120, smooth: 4, wamp: 15, wvlen: 80, ccx: 0.5, ccy: 0.5
+};
+
+// 最大太さの上限 = 間隔の110%（それ以上は隣の線と大きく融合して破綻するため）
+function syncThickMax() {
+  const t = $('thick');
+  t.max = (params.spacing * 1.1).toFixed(1);   // maxを縮めるとブラウザがvalueを自動クランプする
+  params.thick = parseFloat(t.value);
+  $('o_thick').textContent = t.value + 'px';
+}
+let renderQueued = false;
+let lastPolys = null;
+
+function bindSlider(id, fmt, apply) {
+  const el = $(id), out = $('o_' + id);
+  const upd = () => { out.textContent = fmt(el.value); apply(parseFloat(el.value)); scheduleRender(); };
+  el.addEventListener('input', upd);
+  upd();
+}
+bindSlider('angle',   v => v + '°',  v => params.angle = v);
+bindSlider('spacing', v => v + 'px', v => { params.spacing = v; syncThickMax(); });
+bindSlider('thick',   v => v + 'px', v => params.thick = parseFloat(v));
+bindSlider('gamma',   v => (+v).toFixed(2), v => params.gamma = v);
+bindSlider('minw',    v => v + '%',  v => params.minw = v / 100);
+bindSlider('cut',     v => v + '%',  v => params.cut = v / 100);
+bindSlider('white',   v => v + 'px', v => params.white = parseFloat(v));
+bindSlider('edge',    v => v + '%',  v => params.edge = v / 100);
+bindSlider('wobble',  v => v + '%',  v => params.wobble = v / 100);
+bindSlider('wavelen', v => v + 'px', v => params.wavelen = v);
+bindSlider('smooth',  v => v + 'px', v => params.smooth = Math.round(v));
+bindSlider('wamp',    v => v + 'px', v => params.wamp = v);
+bindSlider('wvlen',   v => v + 'px', v => params.wvlen = v);
+bindSlider('ccx',     v => v + '%',  v => params.ccx = v / 100);
+bindSlider('ccy',     v => v + '%',  v => params.ccy = v / 100);
+$('invert').addEventListener('change', e => { params.invert = e.target.checked; scheduleRender(); });
+$('shape').addEventListener('change', e => {
+  params.shape = e.target.value;
+  $('g_angle').style.display  = params.shape === 'circle' ? 'none' : '';
+  $('g_wave').style.display   = params.shape === 'wave'   ? 'contents' : 'none';
+  $('g_center').style.display = params.shape === 'circle' ? 'contents' : 'none';
+  scheduleRender();
+});
+
+// ---- 画像読み込み ----
+const drop = $('drop');
+drop.addEventListener('click', () => $('file').click());
+$('file').addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
+['dragover', 'dragleave', 'drop'].forEach(ev =>
+  drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.toggle('over', ev === 'dragover'); }));
+drop.addEventListener('drop', e => { if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); });
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => { e.preventDefault(); if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); });
+
+function loadFile(file) {
+  srcName = file.name.replace(/\.[^.]+$/, '');
+  const img = new Image();
+  img.onload = () => { setSource(img, img.naturalWidth, img.naturalHeight); URL.revokeObjectURL(img.src); };
+  img.src = URL.createObjectURL(file);
+}
+
+function setSource(drawable, w, h) {
+  const sc = Math.min(1, MAX_DIM / Math.max(w, h));
+  imgW = Math.round(w * sc); imgH = Math.round(h * sc);
+  const oc = document.createElement('canvas');
+  oc.width = imgW; oc.height = imgH;
+  const o = oc.getContext('2d', { willReadFrequently: true });
+  o.fillStyle = '#fff'; o.fillRect(0, 0, imgW, imgH);   // 透過PNG対策：白地に合成
+  o.drawImage(drawable, 0, 0, imgW, imgH);
+  const d = o.getImageData(0, 0, imgW, imgH).data;
+  lum = new Uint8ClampedArray(imgW * imgH);
+  for (let i = 0, j = 0; i < lum.length; i++, j += 4)
+    lum[i] = d[j] * 0.2126 + d[j + 1] * 0.7152 + d[j + 2] * 0.0722;
+  // 積分画像（summed-area table）: 任意矩形の平均輝度をO(1)で取れる
+  const W1 = imgW + 1;
+  sat = new Float64Array(W1 * (imgH + 1));
+  for (let y = 0; y < imgH; y++) {
+    let row = 0;
+    for (let x = 0; x < imgW; x++) {
+      row += lum[y * imgW + x];
+      sat[(y + 1) * W1 + x + 1] = sat[y * W1 + x + 1] + row;
+    }
+  }
+  scheduleRender();
+}
+
+// (x,y)を中心とする半径rの矩形窓の平均輝度（画像外は窓から除外）
+function avgLum(x, y, r) {
+  const x0 = Math.max(0, (x - r) | 0), x1 = Math.min(imgW, (x + r + 1) | 0);
+  const y0 = Math.max(0, (y - r) | 0), y1 = Math.min(imgH, (y + r + 1) | 0);
+  if (x1 <= x0 || y1 <= y0) return 255;
+  const W1 = imgW + 1;
+  const s = sat[y1 * W1 + x1] - sat[y0 * W1 + x1] - sat[y1 * W1 + x0] + sat[y0 * W1 + x0];
+  return s / ((x1 - x0) * (y1 - y0));
+}
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+// ---- 中心線の生成（形状ごと）----
+// 戻り値: 中心線ポリラインの配列。各要素は [x0,y0, x1,y1, ...] のフラット配列（約1px間隔）。
+// 法線は後段で有限差分から求めるので、新しい形状はここに座標列を足すだけで増やせる。
+function buildCenterlines() {
+  const { spacing, shape } = params;
+  const cx = imgW / 2, cy = imgH / 2;
+  const R = Math.hypot(imgW, imgH) / 2;
+  const paths = [];
+  if (shape === 'circle') {
+    const ox = params.ccx * imgW, oy = params.ccy * imgH;
+    const rmax = Math.max(
+      Math.hypot(ox, oy), Math.hypot(imgW - ox, oy),
+      Math.hypot(ox, imgH - oy), Math.hypot(imgW - ox, imgH - oy));
+    for (let r = spacing / 2; r <= rmax; r += spacing) {
+      const steps = Math.max(24, Math.ceil(2 * Math.PI * r));
+      const pts = new Float64Array((steps + 1) * 2);
+      for (let s = 0; s <= steps; s++) {
+        const th = s / steps * 2 * Math.PI;
+        pts[2 * s] = ox + r * Math.cos(th);
+        pts[2 * s + 1] = oy + r * Math.sin(th);
+      }
+      paths.push(pts);
+    }
+  } else {
+    const a = params.angle * Math.PI / 180;
+    const dx = Math.cos(a), dy = Math.sin(a), px = -dy, py = dx;
+    const A = shape === 'wave' ? params.wamp : 0;   // 規則波（全線同位相）
+    const k = 2 * Math.PI / params.wvlen;
+    const n = Math.ceil(2 * R) + 1;
+    for (let d = -R + spacing / 2; d <= R; d += spacing) {
+      const pts = new Float64Array(n * 2);
+      for (let i = 0; i < n; i++) {
+        const t = -R + i;
+        const w = A ? A * Math.sin(t * k) : 0;
+        pts[2 * i] = cx + px * (d + w) + dx * t;
+        pts[2 * i + 1] = cy + py * (d + w) + dy * t;
+      }
+      paths.push(pts);
+    }
+  }
+  return paths;
+}
+
+function boxBlur1D(a, r) {
+  const n = a.length;
+  const pre = new Float64Array(n + 1);
+  for (let i = 0; i < n; i++) pre[i + 1] = pre[i] + a[i];
+  const out = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    const i0 = Math.max(0, i - r), i1 = Math.min(n - 1, i + r);
+    out[i] = (pre[i1 + 1] - pre[i0]) / (i1 - i0 + 1);
+  }
+  return out;
+}
+
+// Ramer–Douglas–Peucker（反復版）: 許容誤差tolを超える点の添字をkeepに追加
+function rdp(X, Y, i0, i1, tol, keep) {
+  const stack = [[i0, i1]];
+  while (stack.length) {
+    const [a, b] = stack.pop();
+    if (b - a < 2) continue;
+    const ax = X[a], ay = Y[a];
+    const dx = X[b] - ax, dy = Y[b] - ay;
+    const len = Math.hypot(dx, dy) || 1e-12;
+    let dmax = -1, imax = -1;
+    for (let i = a + 1; i < b; i++) {
+      const dev = Math.abs((X[i] - ax) * dy - (Y[i] - ay) * dx) / len;
+      if (dev > dmax) { dmax = dev; imax = i; }
+    }
+    if (dmax > tol) { keep.add(imax); stack.push([a, imax], [imax, b]); }
+  }
+}
+
+// ---- 幾何生成（canvas/SVG/PNG/STL共通）----
+// 戻り値: ポリゴンの配列。各ポリゴンは上輪郭K点 + 下輪郭K点(逆順) のフラット配列 [x0,y0,...]。
+// 上下の点数は必ず等しい（STLのストリップ三角形分割がこれに依存）。
+function generatePolys(bounded) {
+  // bounded=true: 画像の範囲で線を打ち切る(STL用・高精度間引き)。false: 線を枠外まで延長し描画時にクリップ(2D用)
+  const { spacing, thick, gamma, minw, invert, smooth, white, edge } = params;
+  const halfMax = thick * 0.5;
+  const effWhite = Math.min(white, spacing * 0.9);   // 白線の確保（暗部でも残す白い隙間）
+  const maxH = Math.min(halfMax, (spacing * 1.1 - effWhite) * 0.5);  // 太さ上限=間隔の110% − 白線分
+  const minH = Math.min(halfMax * minw, maxH);
+  const cutH = Math.max(0.05, halfMax * params.cut); // これ未満で線を打ち切る（0%なら先細りで閉じる）
+  const TOL = bounded ? 0.05 : 0.2;                 // STLは面の折れ角を抑えるため間引きを細かく
+  const win = Math.max(1, Math.round(spacing * 0.5));  // 面積平均の窓半径 ≒ 線1本の受け持ち幅
+  const polys = [];
+  const paths = buildCenterlines();
+
+  for (let li = 0; li < paths.length; li++) {
+    const c = paths[li];
+    const n = c.length / 2;
+    if (n < 2) continue;
+    // 手書き揺らぎ: 線ごとに位相・周波数の異なる2つの正弦波で中心線を蛇行させる
+    const rng = mulberry32(li * 0x9E3779B9 + 0xC0FFEE);
+    const amp = params.wobble * spacing * 0.5;
+    const k1 = 2 * Math.PI / params.wavelen * (0.75 + 0.5 * rng());
+    const k2 = k1 * 1.87;
+    const p1 = rng() * 6.283, p2 = rng() * 6.283;
+
+    // ① 中心線（揺らぎ込み）・法線・幅を収集
+    const X = new Float64Array(n), Y = new Float64Array(n);
+    const NX = new Float64Array(n), NY = new Float64Array(n);
+    const H = new Float64Array(n);
+    const inside = new Uint8Array(n);
+    for (let i = 0; i < n; i++) {
+      const iA = Math.max(0, i - 1), iB = Math.min(n - 1, i + 1);
+      let tx = c[2 * iB] - c[2 * iA], ty = c[2 * iB + 1] - c[2 * iA + 1];
+      const tl = Math.hypot(tx, ty) || 1; tx /= tl; ty /= tl;
+      const nx = -ty, ny = tx;
+      const off = amp ? amp * (0.65 * Math.sin(i * k1 + p1) + 0.35 * Math.sin(i * k2 + p2)) : 0;
+      const x = c[2 * i] + nx * off, y = c[2 * i + 1] + ny * off;
+      X[i] = x; Y[i] = y; NX[i] = nx; NY[i] = ny;
+      inside[i] = (x >= 0 && y >= 0 && x < imgW && y < imgH) ? 1 : 0;
+      if (!bounded || inside[i]) {
+        const l = avgLum(x, y, win) / 255;   // 画像外は窓が縁にクランプ（完全外は白扱い）
+        const dark = invert ? l : 1 - l;
+        H[i] = Math.min(maxH, Math.max(minH, Math.pow(dark, gamma) * halfMax));
+      }
+    }
+
+    // ② 幅を線に沿って平滑化（box blur×2 ≒ 三角フィルタ）。画像外は0のまま混ぜ、後で除外
+    const Hs = smooth >= 1 ? boxBlur1D(boxBlur1D(H, smooth), smooth) : H;
+    // ②' エッジ強調（アンシャープマスク）: 白が黒線を細く抉り、黒が白に食い込む
+    let Hf = Hs;
+    if (edge > 0) {
+      const usr = Math.max(3, Math.round(spacing));
+      const U = boxBlur1D(boxBlur1D(Hs, usr), usr);
+      Hf = new Float64Array(n);
+      for (let i = 0; i < n; i++)
+        Hf[i] = Math.min(maxH, Math.max(minH, Hs[i] + edge * (Hs[i] - U[i])));
+    }
+    // STL用: 天面の高さ曲線はさらに強めにならす（カクカク防止）
+    const zr = smooth + 6;
+    const Hz = bounded ? boxBlur1D(boxBlur1D(Hf, zr), zr) : null;
+
+    // ③ 可視区間ごとに、上下輪郭をRDPで間引いてポリゴン化
+    const emit = (a, b) => {
+      const m = b - a + 1;
+      if (m < 2) return;
+      const TXa = new Float64Array(m), TYa = new Float64Array(m);
+      const BXa = new Float64Array(m), BYa = new Float64Array(m);
+      for (let i = a; i <= b; i++) {
+        const j = i - a, h = Hf[i];
+        TXa[j] = X[i] + NX[i] * h; TYa[j] = Y[i] + NY[i] * h;
+        BXa[j] = X[i] - NX[i] * h; BYa[j] = Y[i] - NY[i] * h;
+      }
+      const keep = new Set([0, m - 1]);
+      rdp(TXa, TYa, 0, m - 1, TOL, keep);   // 上下それぞれで必要な点を求め、
+      rdp(BXa, BYa, 0, m - 1, TOL, keep);   // 和集合を両輪郭で共有（点数を揃える）
+      if (Hz) {
+        // 高さ曲線(パラメータj, 高さ比×30px相当)の折れも頂点として残す → 天面が滑らかに
+        const Jx = new Float64Array(m), Zc = new Float64Array(m);
+        for (let i = a; i <= b; i++) { Jx[i - a] = i - a; Zc[i - a] = Hz[i] / (maxH || 1) * 30; }
+        rdp(Jx, Zc, 0, m - 1, TOL, keep);
+      }
+      const idx = [...keep].sort((u, v) => u - v);
+      const poly = [];
+      for (const j of idx) poly.push(TXa[j], TYa[j]);
+      for (let q = idx.length - 1; q >= 0; q--) poly.push(BXa[idx[q]], BYa[idx[q]]);
+      if (poly.length >= 8) {
+        poly.hr = idx.map(j => Math.min(1, (Hz ? Hz[a + j] : Hf[a + j]) / (maxH || 1)));  // STL高さ変調用の太さ比
+        polys.push(poly);
+      }
+    };
+    let segStart = -1;
+    for (let i = 0; i < n; i++) {
+      const vis = (!bounded || inside[i]) && Hf[i] > cutH;
+      if (vis && segStart < 0) segStart = i;
+      else if (!vis && segStart >= 0) { emit(segStart, i - 1); segStart = -1; }
+    }
+    if (segStart >= 0) emit(segStart, n - 1);
+  }
+  return polys;
+}
+
+// ---- 描画 ----
+function scheduleRender() {
+  if (renderQueued || !lum) return;
+  renderQueued = true;
+  requestAnimationFrame(() => { renderQueued = false; render(); });
+}
+
+function drawPolys(c, polys, scale) {
+  const g = c.getContext('2d');
+  g.fillStyle = params.invert ? '#000' : '#fff';
+  g.fillRect(0, 0, c.width, c.height);
+  g.fillStyle = params.invert ? '#fff' : '#000';
+  g.beginPath();
+  for (const p of polys) {
+    g.moveTo(p[0] * scale, p[1] * scale);
+    for (let i = 2; i < p.length; i += 2) g.lineTo(p[i] * scale, p[i + 1] * scale);
+    g.closePath();
+  }
+  g.fill();
+}
+
+function render() {
+  const t0 = performance.now();
+  const polys = generatePolys();
+  // Retina対応: 実ピクセルで描き、CSSは等倍（拡大表示のぼやけを防ぐ）
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.round(imgW * dpr); cv.height = Math.round(imgH * dpr);
+  cv.style.width = imgW + 'px'; cv.style.height = 'auto';
+  drawPolys(cv, polys, dpr);
+  lastPolys = polys;
+  $('info').textContent =
+    `${imgW}×${imgH}px / 線 ${polys.length}本(分割含) / ${Math.round(performance.now() - t0)}ms`;
+}
+
+// ---- 書き出し ----
+function download(blob, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+$('expPng').addEventListener('click', () => {
+  if (!lastPolys) return;
+  const s = parseInt($('pngscale').value, 10);
+  const oc = document.createElement('canvas');
+  oc.width = imgW * s; oc.height = imgH * s;
+  drawPolys(oc, lastPolys, s);
+  oc.toBlob(b => download(b, `${srcName}_halfline.png`), 'image/png');
+});
+
+$('expSvg').addEventListener('click', () => {
+  if (!lastPolys) return;
+  const bg = params.invert ? '#000' : '#fff';
+  const fg = params.invert ? '#fff' : '#000';
+  const parts = [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${imgW}" height="${imgH}" viewBox="0 0 ${imgW} ${imgH}">`,
+    `<clipPath id="frame"><rect width="${imgW}" height="${imgH}"/></clipPath>`,
+    `<rect width="${imgW}" height="${imgH}" fill="${bg}"/>`,
+    `<g fill="${fg}" clip-path="url(#frame)">`
+  ];
+  const r = n => Math.round(n * 100) / 100;
+  for (const p of lastPolys) {
+    let d = `M${r(p[0])} ${r(p[1])}`;
+    for (let i = 2; i < p.length; i += 2) d += `L${r(p[i])} ${r(p[i + 1])}`;
+    parts.push(`<path d="${d}Z"/>`);
+  }
+  parts.push('</g></svg>');
+  download(new Blob(parts, { type: 'image/svg+xml' }), `${srcName}_halfline.svg`);
+});
+
+// ---- STL（バイナリ）----
+// 各ポリゴンは上下K点ずつの帯なのでストリップ状に厳密三角形分割できる。
+// 帯を閉じた角柱に押し出し、土台(直方体)と重ねる。シェルの重なりはスライサーが自動union。
+function buildSTL(wmm, hmm, bmm, mode) {
+  const polys = generatePolys(true);              // STLは画像の範囲で線を打ち切った幾何を使う
+  const s = wmm / imgW;
+  const dmm = imgH * s;                           // 奥行き(mm)
+  const z0 = bmm > 0 ? Math.max(0, bmm - 0.2) : 0; // 土台に0.2mm食い込ませて融合
+  let tris = bmm > 0 ? 12 : 0;
+  for (const p of polys) { const P = p.length / 2; tris += 4 * P - 4; }
+  if (tris > 4e6) { alert('三角形数が多すぎます(' + tris.toLocaleString() + ')。「輪郭の滑らかさ」や「線の間隔」を上げてください。'); return null; }
+
+  const buf = new ArrayBuffer(84 + tris * 50);
+  const dv = new DataView(buf);
+  dv.setUint32(80, tris, true);
+  let off = 84;
+  const mx = x => x * s, my = y => (imgH - y) * s;  // Y反転(画像は下向きY)
+  function tri(ax, ay, az, bx, by, bz, cx2, cy2, cz2) {
+    const ux = bx - ax, uy = by - ay, uz = bz - az;
+    const vx = cx2 - ax, vy = cy2 - ay, vz = cz2 - az;
+    let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    const l = Math.hypot(nx, ny, nz);
+    if (l > 1e-12) { nx /= l; ny /= l; nz /= l; } else { nx = 0; ny = 0; nz = 1; }
+    dv.setFloat32(off, nx, true); dv.setFloat32(off + 4, ny, true); dv.setFloat32(off + 8, nz, true);
+    dv.setFloat32(off + 12, ax, true); dv.setFloat32(off + 16, ay, true); dv.setFloat32(off + 20, az, true);
+    dv.setFloat32(off + 24, bx, true); dv.setFloat32(off + 28, by, true); dv.setFloat32(off + 32, bz, true);
+    dv.setFloat32(off + 36, cx2, true); dv.setFloat32(off + 40, cy2, true); dv.setFloat32(off + 44, cz2, true);
+    off += 50;                                     // 属性2byteは0のまま
+  }
+  const quad = (a, b, c, d) => { tri(...a, ...b, ...c); tri(...a, ...c, ...d); };
+  if (bmm > 0) {
+    quad([0, 0, bmm], [wmm, 0, bmm], [wmm, dmm, bmm], [0, dmm, bmm]);
+    quad([0, 0, 0], [0, dmm, 0], [wmm, dmm, 0], [wmm, 0, 0]);
+    quad([0, 0, 0], [wmm, 0, 0], [wmm, 0, bmm], [0, 0, bmm]);
+    quad([wmm, 0, 0], [wmm, dmm, 0], [wmm, dmm, bmm], [wmm, 0, bmm]);
+    quad([wmm, dmm, 0], [0, dmm, 0], [0, dmm, bmm], [wmm, dmm, bmm]);
+    quad([0, dmm, 0], [0, 0, 0], [0, 0, bmm], [0, dmm, bmm]);
+  }
+  for (const p of polys) {
+    const P = p.length / 2, K = P / 2;
+    // 頂点ごとの天面高さ: 線の太さ比で変調（一定/太いほど高く/太いほど低く）
+    const zt = new Float64Array(K);
+    for (let j = 0; j < K; j++) {
+      let r = 1;
+      if (mode !== 'uniform' && p.hr) r = mode === 'lower' ? 1 - p.hr[j] : p.hr[j];
+      zt[j] = bmm + Math.max(0.2, hmm * r);   // 最低0.2mmは確保（印刷可能な下限）
+    }
+    for (let j = 0; j < K - 1; j++) {
+      const t0x = mx(p[2 * j]),           t0y = my(p[2 * j + 1]);
+      const t1x = mx(p[2 * (j + 1)]),     t1y = my(p[2 * (j + 1) + 1]);
+      const b0x = mx(p[2 * (P - 1 - j)]), b0y = my(p[2 * (P - 1 - j) + 1]);
+      const b1x = mx(p[2 * (P - 2 - j)]), b1y = my(p[2 * (P - 2 - j) + 1]);
+      tri(t0x, t0y, zt[j], t1x, t1y, zt[j + 1], b0x, b0y, zt[j]);       // 天面（起伏あり）
+      tri(t1x, t1y, zt[j + 1], b1x, b1y, zt[j + 1], b0x, b0y, zt[j]);
+      tri(t0x, t0y, z0, b0x, b0y, z0, t1x, t1y, z0);                    // 底面（巻き逆）
+      tri(t1x, t1y, z0, b0x, b0y, z0, b1x, b1y, z0);
+    }
+    for (let i = 0; i < P; i++) {                                        // 側面（リング一周）
+      const j = (i + 1) % P;
+      const zi = zt[i < K ? i : P - 1 - i], zj = zt[j < K ? j : P - 1 - j];
+      const x0 = mx(p[2 * i]), y0 = my(p[2 * i + 1]);
+      const x1 = mx(p[2 * j]), y1 = my(p[2 * j + 1]);
+      tri(x0, y0, z0, x1, y1, z0, x1, y1, zj);
+      tri(x0, y0, z0, x1, y1, zj, x0, y0, zi);
+    }
+  }
+  return buf;
+}
+
+$('expStl').addEventListener('click', () => {
+  if (!lum) return;
+  const wmm = Math.max(10, parseFloat($('stlw').value) || 140);
+  const hmm = Math.max(0.2, parseFloat($('stlh').value) || 1.2);
+  const bmm = Math.max(0, parseFloat($('stlb').value) || 0);
+  const buf = buildSTL(wmm, hmm, bmm, $('stlmod').value);
+  if (buf) download(new Blob([buf], { type: 'model/stl' }), `${srcName}_halfline.stl`);
+});
+
+// ---- ヘルプ吹き出し（パネルのoverflowクリップを回避するため、body直下に固定配置）----
+const tip = document.createElement('div');
+tip.id = 'tip';
+document.body.appendChild(tip);
+document.querySelectorAll('.hint[data-tip]').forEach(h => {
+  h.addEventListener('mouseenter', () => {
+    tip.textContent = h.dataset.tip;
+    tip.style.display = 'block';
+    const r = h.getBoundingClientRect();
+    const x = Math.min(Math.max(8, r.left - 70), window.innerWidth - 258);
+    let y = r.top - tip.offsetHeight - 6;
+    if (y < 8) y = r.bottom + 6;
+    tip.style.left = x + 'px';
+    tip.style.top = y + 'px';
+  });
+  h.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+});
+
+// ---- 起動時サンプル（陰影球）----
+(function sample() {
+  const w = 800, h = 600;
+  const oc = document.createElement('canvas');
+  oc.width = w; oc.height = h;
+  const o = oc.getContext('2d');
+  o.fillStyle = '#ffffff'; o.fillRect(0, 0, w, h);
+  const im = o.getImageData(0, 0, w, h), dd = im.data;
+  const cx = w / 2, cy = h / 2, R = 230, lx = -0.5, ly = -0.6, lz = 0.62;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const nx = (x - cx) / R, ny = (y - cy) / R, r2 = nx * nx + ny * ny;
+    if (r2 <= 1) {
+      const nz = Math.sqrt(1 - r2);
+      const v = Math.min(255, 15 + Math.max(0, nx * lx + ny * ly + nz * lz) * 230);
+      const i = (y * w + x) * 4;
+      dd[i] = dd[i + 1] = dd[i + 2] = v;
+    }
+  }
+  o.putImageData(im, 0, 0);
+  setSource(oc, w, h);
+})();
+</script>
+</body>
+</html>
