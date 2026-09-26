@@ -52,12 +52,12 @@
 
 <div class="panel">
   <h1>🪷 ディフューザー 開き具合シミュレータ</h1>
-  <p class="lead">スティックサポーターの穴の角度を変えて、広がり方と干渉を試す。寸法の既定値は実機（実測）。</p>
+  <p class="lead">スティックサポーターの穴の角度を変えて、広がり方と干渉を試す。寸法の既定値は実測値。</p>
 
   <div class="grp"><b>モデル</b>
     <div class="btns">
-      <button data-mode="10">10本・部屋仕切り（実機）</button>
-      <button data-mode="5">5本・丸穴（旧版）</button>
+      <button data-mode="10">10本・部屋仕切り（外壁なし）</button>
+      <button data-mode="5">5本・丸穴</button>
     </div>
     <div class="note" id="modeNote"></div>
   </div>
@@ -90,7 +90,7 @@
       <button data-view="iso">斜め</button>
       <button data-view="front">正面</button>
       <button data-view="top">真上</button>
-      <button id="reset">実機の値に戻す</button>
+      <button id="reset">既定値に戻す</button>
     </div>
   </div>
 </div>
@@ -106,7 +106,7 @@ import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 
 // 座標: z=0 が差し込み部の下端、z=PL が瓶の口の上端。瓶の中は z<PL。
-// 既定値は実機の設計/実測（diffuser_stick_support.py・bottle_dummy.py）:
+// 既定値は設計値/実測値（diffuser_stick_support.py・bottle_dummy.py）:
 //   口の穴16.8 / 差し込み長15 / 中の深さ62 / スティックφ3.0・長さ250 / 胴の外径70.5
 // TILT=5本版の傾き(12°)、TOUT=10本版の一番外側の傾き(10°)。傾きスライダーはモードごとに別の値を持つ。
 const DEF = {MODE:5, N:5, TILT:12, TOUT:10, TWIST:90, THROAT:3.8, SD:3.0, SL:250,
@@ -116,11 +116,12 @@ const tiltKey = () => P.MODE === 10 ? 'TOUT' : 'TILT';
 const P = {...DEF};
 // サポーターと瓶の固定寸法（実測・設計値）
 const FLANGE_W = 3.75, FLANGE_T = 0.8, PLUG_GAP = 0.2;   // ツバ張り出し/厚み・口とのすき間
-const NECK_H = 16.6, NECK_D = 26.8, BODY_H = 54.8;
+const NECK_H = 16.6, NECK_D = 26.8;
 const INNER_WALL = 4.0, BOTTOM_T = 9.0;                  // 胴の壁厚・底の厚み（実測）
 const BORE_GAP = 0.2;     // 10本版: スティック外面と瓶の口の内面のすき間（外壁は作らず口が壁になる）
 
-// 10本版の断面レイアウト（z=ZTでの軸位置を半径上限で正規化したもの。最小間隔を最大化した実機の配置）
+// 10本版の断面レイアウト（z=ZTでの軸位置を半径上限で正規化したもの。最小間隔を最大化した配置。
+// diffuser_stick_support_10.py（外壁なし版）の PTS/R_LIM と同じ。Python側を変えたらここも更新）
 const PTS10 = [[-0.31895,0.00111],[0.82869,0.55971],[-0.4653,-0.88515],[0.24052,-0.97065],
                [-0.93592,-0.35222],[-0.45911,0.88838],[0.39202,-0.00137],[-0.93343,0.35875],
                [0.24729,0.96894],[0.82476,-0.56549]];
@@ -310,7 +311,7 @@ function syncUI(){
   $('N_v').textContent = m10 ? '10本' : P.N + '本';
   $('modeNote').textContent = m10
     ? '10本を仕切り壁の部屋に通し、断面ごと回しながら開くので互いに交わらない。外壁は作らず、瓶の口が壁の役をする（スティックは口に接触してよい）。'
-    : '初期版。円周に並べた5つの丸穴。接線方向にねじって開く。';
+    : '円周に並べた5つの丸穴。接線方向にねじって開く。';
   for (const b of document.querySelectorAll('[data-mode]')) b.classList.toggle('on', +b.dataset.mode === P.MODE);
 }
 for (const k of KEYS){
