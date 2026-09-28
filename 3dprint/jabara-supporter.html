@@ -20,6 +20,7 @@
   .srow input[type=number]{width:64px;font-size:13px;padding:4px;background:#18181a;color:#eee;border:1px solid #555;border-radius:5px;text-align:right}
   .mb{width:30px;height:26px;flex-shrink:0;background:#3a3a3e;color:#fff;border:1px solid #555;border-radius:5px;font-size:15px;cursor:pointer;padding:0}
   .mb:hover{background:#4a4a50}
+  .row2{display:flex;gap:10px}.row2>div{flex:1}
   select{width:100%;font-size:13px;padding:6px;background:#18181a;color:#eee;border:1px solid #555;border-radius:5px}
   details{margin-top:14px;border-top:1px solid #3a3a3e;padding-top:8px}
   summary{font-size:12px;color:#aaa;cursor:pointer}
@@ -56,25 +57,41 @@
   <label>角度（360°で一周） <span class="val" id="thetaV"></span></label>
   <div class="srow"><button class="mb" data-t="theta" data-d="-1">−</button><input type="range" id="theta" min="30" max="360" step="1" value="100"><button class="mb" data-t="theta" data-d="1">＋</button><input type="number" id="thetan" min="30" max="360" step="1"></div>
 
-  <div class="step"><span class="n">3</span>弧の直径</div>
-  <label>ホース中心線の直径 <span class="val" id="diaV"></span></label>
-  <div class="srow"><button class="mb" data-t="dia" data-d="-1">−</button><input type="range" id="dia" min="36" max="400" step="0.1" value="114.4"><button class="mb" data-t="dia" data-d="1">＋</button><input type="number" id="dian" step="0.1"></div>
-  <div class="range" id="diaRange"></div>
+  <div class="step"><span class="n">3</span>蛇腹の長さ</div>
+  <label>ホースに沿った長さ（両端ブロックを除く） <span class="val" id="lenV"></span></label>
+  <div class="srow"><button class="mb" data-t="len" data-d="-1">−</button><input type="range" id="len" min="30" max="400" step="0.1" value="99.8"><button class="mb" data-t="len" data-d="1">＋</button><input type="number" id="lenn" step="0.1"></div>
+  <div class="range" id="lenRange"></div>
+
+  <div class="step"><span class="n">4</span>蛇腹の間隔</div>
+  <select id="gapPreset">
+    <option value="">（下のスライダーで個別に）</option>
+    <option value="10,10">全体を大きく</option>
+    <option value="3,3">全体を小さく</option>
+    <option value="10,3" selected>手前が大きく、奥が小さく</option>
+    <option value="3,10">手前が小さく、奥が大きく</option>
+  </select>
+  <label>手前側の間隔 <span class="val" id="gapAV"></span></label>
+  <div class="srow"><button class="mb" data-t="gapA" data-d="-1">−</button><input type="range" id="gapA" min="0" max="15" step="0.5" value="10"><button class="mb" data-t="gapA" data-d="1">＋</button></div>
+  <label>奥側の間隔 <span class="val" id="gapBV"></span></label>
+  <div class="srow"><button class="mb" data-t="gapB" data-d="-1">−</button><input type="range" id="gapB" min="0" max="15" step="0.5" value="3"><button class="mb" data-t="gapB" data-d="1">＋</button></div>
+  <label>手前→奥の変わり方</label>
+  <select id="gapMode">
+    <option value="half" selected>半分のところで切り替える</option>
+    <option value="linear">なだらかに変える</option>
+  </select>
+
+  <div class="step"><span class="n">5</span>先の形</div>
+  <div class="row2">
+    <div><label>手前の端</label>
+      <select id="endA"><option value="clip" selected>押し込み口</option><option value="neck">先細</option><option value="flat">全幅</option></select></div>
+    <div><label>奥の端</label>
+      <select id="endB"><option value="clip">押し込み口</option><option value="neck" selected>先細</option><option value="flat">全幅</option></select></div>
+  </div>
+  <div class="range">押し込み口＝溝が少し太く、中ほどの天面が開いて真上から押し込める／先細＝先端が細くなる／全幅＝四角いまま</div>
 
   <details>
     <summary>詳細設定</summary>
-    <label>硬さの配分（関節の開き 3°／10° の置き方）</label>
-    <select id="stiff">
-      <option value="back" selected>奥側をキツめ（手前の端から半分ゆるめ）</option>
-      <option value="front">手前側をキツめ</option>
-      <option value="even">全体ゆるめ（一様）</option>
-    </select>
-    <label>手前端ブロックの天面</label>
-    <select id="open">
-      <option value="on" selected>中ほどを開口（真上から押し込める）</option>
-      <option value="off">開口しない</option>
-    </select>
-    <label>手前端の溝を太くする <span class="val" id="clipV"></span></label>
+    <label>押し込み口の溝を太くする <span class="val" id="clipV"></span></label>
     <div class="srow"><button class="mb" data-t="clip" data-d="-1">−</button><input type="range" id="clip" min="0" max="3" step="0.1" value="1"><button class="mb" data-t="clip" data-d="1">＋</button></div>
   </details>
 
@@ -102,13 +119,13 @@ const $=id=>document.getElementById(id);
 // 蛇腹サポーター 生成コア（チューブサポーター2 の params/geom/build_open を移植）
 // 座標: 平らな状態で組み立て（y=長さ方向, x=幅, z=高さ）→ 最後に xy を円弧へ写像（warp）する。
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-const JOINT_LOOSE=10, JOINT_TIGHT=3;   // 関節の開き角[deg]（ゆるめ／キツめ）
+const GAP_MAX_DEG=15;                   // 関節の開き角の上限[deg]（間隔スライダーの右端）
 const CLR=1.0;                          // 部材どうしのすきま最小値
 const N_MIN=4, N_MAX=60;                // リブ枚数の範囲
 const MIN_GAP=0.6, MIN_RIB=0.6;         // 曲げた後の関節すきま／内側リブ厚の下限
 const BEND_SIDE=-1;                     // 曲げの内側: -1=左面
 
-// ---- 入力（D, 弧の直径, 角度, 詳細）→ 全寸法。見本(D=12)の値を D/12 で拡縮し、印刷できる範囲に丸める ----
+// ---- 入力（D, 蛇腹の長さ, 角度, 詳細）→ 全寸法。見本(D=12)の値を D/12 で拡縮し、印刷できる範囲に丸める ----
 function deriveParams(u){
   const D=u.D, s=D/12, P={D_TUBE:D};
   P.T_RIB=clamp(2.4*s,1.2,3.6);          // リブ厚＝スリット幅＝ブリッジ幅
@@ -124,7 +141,7 @@ function deriveParams(u){
   P.W_TIP=D+2*clamp(2*s,1.2,4);
   P.R_SHOULDER=clamp(2.5*s,1,4);
   P.R_TIPC=clamp(1.5*s,0.6,3);
-  P.CLIP_MAX=Math.max(0,Math.min(3,2*(P.WALL_BOT-1)));   // 手前端の溝底が 1mm を切らない
+  P.CLIP_MAX=Math.max(0,Math.min(3,2*(P.WALL_BOT-1)));   // 押し込み口の溝底が 1mm を切らない
   P.D_CLIP=D+clamp(u.clipExtra||0,0,P.CLIP_MAX);
   P.MOUTH=D*0.875; P.MOUTH_CLIP=P.D_CLIP*0.9;
   P.L_TAPER=P.D_CLIP>D?Math.max(0.5,P.D_CLIP-D):0;
@@ -133,21 +150,25 @@ function deriveParams(u){
   P.Z_CTR=P.WALL_BOT+D/2;
   P.W_BRIDGE=P.GAP_HINGE=P.T_RIB;
   P.cx=P.W_TOTAL/2;
-  // 天面開口（手前端ブロックの中ほどを溝径いっぱいまで広げ、両端に押さえを残す）
+  // 押し込み口の天面開口（端ブロックの中ほどを溝径いっぱいまで広げ、両端に押さえを残す）
   P.MOUTH_OPEN=P.D_CLIP; P.TAB_LEN=P.T_RIB;
   P.RAMP=(P.MOUTH_OPEN-P.MOUTH_CLIP)/2;
   P.END_FLARE=Math.max(0,Math.min(1.2*s,P.TAB_LEN,(P.W_TOTAL-2*0.46*P.WALL_SIDE-P.MOUTH_CLIP)/2));
-  P.OPEN=!!u.open && (P.L_END_A-2*P.TAB_LEN>2*P.RAMP+1);
-  P.stiff=u.stiff||"back";
+  P.OPEN=P.L_END_A-2*P.TAB_LEN>2*P.RAMP+1;
+  // 端の形: "flat"=全幅 / "neck"=先細 / "clip"=押し込み口（太い溝＋天面開口）
+  P.endA=u.endA||"clip"; P.endB=u.endB||"neck";
+  // 関節の開き角[deg]: 手前側・奥側と、その間の変化のしかた（"half"=半分で切替 / "linear"=なだらか）
+  P.gapA=u.gapA??10; P.gapB=u.gapB??3; P.gapMode=u.gapMode||"half";
   return P;
 }
 
-function jointAngles(N,stiff,scale){
-  const nt=Math.floor(N/2), L=JOINT_LOOSE*scale, T=JOINT_TIGHT*scale;
-  if(stiff==="even") return Array(N).fill(L);
-  const a=[...Array(nt).fill(T),...Array(N-nt).fill(L)];   // 前半キツめ
-  return stiff==="front"?a:a.reverse();                       // 後半キツめ＝前後反転
+function jointAngles(N,P){
+  if(P.gapMode==="linear") return Array.from({length:N},(_,i)=>P.gapA+(P.gapB-P.gapA)*(N>1?i/(N-1):0));
+  const na=Math.ceil(N/2);
+  return Array.from({length:N},(_,i)=>i<na?P.gapA:P.gapB);
 }
+// 関節角 a[deg] のときの軸上のすきま[mm]（両隣が同じ角の関節）
+const gapMM=(P,a)=>P.T_RIB+(P.W_TOTAL-P.T_RIB)*Math.tan(a/2*Math.PI/180);
 
 // 関節を開いた平面配置（geom.layout の移植）。軸(x=cx)上の y で面を持つ
 function layout(P,angles){
@@ -168,19 +189,14 @@ function layout(P,angles){
   return {ribs,gaps,L:yPrev+P.L_END_B,Ls:yPrev-P.L_END_A};
 }
 
-// 目標のバネ部長さに合わせて リブ枚数N と 関節角の倍率 を決める
+// 蛇腹の長さに一番近いリブ枚数を選ぶ（関節角は指定どおりに保つ）
 function fitSpring(P,Ls){
   let best=null;
   for(let N=N_MIN;N<=N_MAX;N++){
-    const l=layout(P,jointAngles(N,P.stiff,1)).Ls;
-    if(!best||Math.abs(l-Ls)<Math.abs(best.l-Ls)) best={N,l};
+    const angles=jointAngles(N,P), lay=layout(P,angles);
+    if(!best||Math.abs(lay.Ls-Ls)<Math.abs(best.lay.Ls-Ls)) best={N,angles,lay};
   }
-  const N=best.N; let lo=0.6, hi=1.5, sc=1;
-  const f=sc=>layout(P,jointAngles(N,P.stiff,sc)).Ls;
-  if(f(lo)>Ls) sc=lo; else if(f(hi)<Ls) sc=hi;
-  else{for(let i=0;i<40;i++){sc=(lo+hi)/2; if(f(sc)<Ls) lo=sc; else hi=sc;}}
-  const angles=jointAngles(N,P.stiff,sc), lay=layout(P,angles);
-  return {N,scale:sc,angles,lay,ok:Math.abs(lay.Ls-Ls)<0.05};
+  return best;
 }
 
 // 曲げ写像。Rc=中心線の平均半径。k>0 で渦巻き（φとともに半径が k·φ 増える）
@@ -225,38 +241,74 @@ function checkShape(P,lay,thetaDeg,Rc,k){
   return {ok:true,mp,minGap,ribIn};
 }
 
-// 入力一式 → 形状の設計値（NG なら ok:false と理由）
-function plan(u){
-  const P=deriveParams(u), th=u.theta*Math.PI/180, Rc=u.dia/2;
-  const fit=fitSpring(P,Rc*th);
-  if(!fit.ok) return {ok:false,P,fit,why:fit.lay.Ls<Rc*th?"リブ枚数の上限を超える":"リブ枚数が少なすぎる"};
-  let chk=checkShape(P,fit.lay,u.theta,Rc,0), k=0;
+// リブ枚数を決めた後の形の判定（弧の半径＝蛇腹の長さ／角度）
+function planFit(P,fit,theta){
+  const th=theta*Math.PI/180, Rc=fit.lay.Ls/th;
+  let chk=checkShape(P,fit.lay,theta,Rc,0), k=0;
   // 180°を超えて端がぶつかるときは渦巻きにする（外周へずらす量を少しずつ増やして最小を探す）
-  if(!chk.ok && chk.why==="両端が本体にぶつかる" && u.theta>180){
+  if(!chk.ok && chk.why==="両端が本体にぶつかる" && theta>180){
     const k1=(P.W_TOTAL+CLR+0.5)/th;
     for(const m of [1,1.25,1.5,1.75,2,2.5]){
-      const c=checkShape(P,fit.lay,u.theta,Rc,k1*m);
+      const c=checkShape(P,fit.lay,theta,Rc,k1*m);
       chk=c; k=k1*m;
       if(c.ok || c.why!=="両端が本体にぶつかる") break;
     }
   }
-  return {ok:chk.ok,why:chk.why,P,fit,chk,k,Rc,theta:u.theta};
+  return {ok:chk.ok,why:chk.why,P,fit,chk,k,Rc,theta};
+}
+// 入力一式 → 形状の設計値（NG なら ok:false と理由）
+function plan(u){
+  const P=deriveParams(u);
+  return planFit(P,fitSpring(P,u.len),u.theta);
 }
 
-// D・角度・詳細が決まったときの 弧の直径 の有効範囲
-function diaRange(u){
-  let lo=null, hi=null;
-  for(let d=10;d<=400;d+=1){
-    if(plan({...u,dia:d}).ok){ if(lo===null) lo=d; hi=d; }
-    else if(lo!==null && hi!==null && d-hi>20) break;
+// D・角度・詳細が決まったときに作れる 蛇腹の長さ の範囲（リブ枚数ごとに判定）
+function lenRange(u){
+  const P=deriveParams(u); let lo=null, hi=null;
+  for(let N=N_MIN;N<=N_MAX;N++){
+    const angles=jointAngles(N,P), lay=layout(P,angles);
+    if(planFit(P,{N,angles,lay},u.theta).ok){ if(lo===null) lo=lay.Ls; hi=lay.Ls; }
   }
   return lo===null?null:[lo,hi];
 }
 
-// ---- 3D 形状（Manifold）----
+// ---- WASM オブジェクトの後片付け ----
+// Manifold/CrossSection は JS の GC では解放されない。生成中に作られたものを全部記録し、
+// 返すもの以外を最後に delete する（しないと生成を繰り返すうちにメモリが尽きる）。
+function trackWasm(wasm){
+  if(wasm._scopeReady) return; wasm._scopeReady=true;
+  const types=[wasm.Manifold,wasm.CrossSection];
+  const reg=r=>{ if(wasm._scope){ if(Array.isArray(r)) r.forEach(reg); else if(types.some(t=>r instanceof t)) wasm._scope.push(r); } return r; };
+  for(const T of types){
+    const skip=["constructor","delete","isDeleted","deleteLater","isAliasOf","clone"];
+    for(let pr=T.prototype;pr&&pr!==Object.prototype;pr=Object.getPrototypeOf(pr)){   // メソッドは親(embind)側にある
+      for(const k of Object.getOwnPropertyNames(pr)){
+        const d=Object.getOwnPropertyDescriptor(pr,k);
+        if(typeof d.value!=="function"||skip.includes(k)) continue;
+        const f=d.value; pr[k]=function(...a){return reg(f.apply(this,a));};
+      }
+    }
+    for(const k of Object.getOwnPropertyNames(T)){
+      const f=T[k]; if(typeof f!=="function"||["length","name","prototype"].includes(k)) continue;
+      T[k]=function(...a){return reg(f.apply(this,a));};
+    }
+  }
+  wasm._reg=reg;
+}
 function buildPart(wasm,pl){
+  trackWasm(wasm); wasm._scope=[];
+  try{
+    const out=buildPartInner(wasm,pl), keep=out.part;
+    for(const o of new Set(wasm._scope)) if(o!==keep) o.delete();
+    return out;
+  }catch(e){ for(const o of new Set(wasm._scope)) try{o.delete();}catch(_){} throw e; }
+  finally{ wasm._scope=null; }
+}
+
+// ---- 3D 形状（Manifold）----
+function buildPartInner(wasm,pl){
   const {Manifold,CrossSection}=wasm, P=pl.P, lay=pl.fit.lay, L=lay.L, cx=P.cx, W=P.W_TOTAL;
-  const CS=(pts)=>new CrossSection([pts],"NonZero");
+  const CS=(pts)=>wasm._reg(new CrossSection([pts],"NonZero"));
   const rect=(x0,y0,x1,y1)=>CS([[x0,y0],[x1,y0],[x1,y1],[x0,y1]]);
   const roundRect=(x0,y0,x1,y1,r)=>rect(x0,y0,x1,y1).offset(-r,"Round",2,48).offset(r,"Round",2,48);
   const arcPts=(c,r,a0,a1,n)=>{const o=[];for(let i=0;i<=n;i++){const t=a0+(a1-a0)*i/n;o.push([c[0]+r*Math.cos(t),c[1]+r*Math.sin(t)]);}return o;};
@@ -275,9 +327,16 @@ function buildPart(wasm,pl){
     return CS([[C[0]-e*(u1[0]+u2[0]),C[1]-e*(u1[1]+u2[1])],[T1[0]-e*u2[0],T1[1]-e*u2[1]],...ar.slice(1,-1),[T2[0]-e*u1[0],T2[1]-e*u1[1]]]);
   };
   // 外形（上面図）
-  let solid=roundRect(0,0,W,L-P.L_TIP,P.R_CORNER)
-    .add(roundRect(cx-P.W_TIP/2,L-P.L_TIP-3,cx+P.W_TIP/2,L,P.R_TIPC));
-  for(const sg of [-1,1]){const fl=fillet([cx+sg*P.W_TIP/2,L-P.L_TIP],[sg,0],[0,1],P.R_SHOULDER); if(fl) solid=solid.add(fl);}
+  const nA=P.endA==="neck", nB=P.endB==="neck";
+  let solid=roundRect(0,nA?P.L_TIP:0,W,nB?L-P.L_TIP:L,P.R_CORNER);
+  if(nB){
+    solid=solid.add(roundRect(cx-P.W_TIP/2,L-P.L_TIP-3,cx+P.W_TIP/2,L,P.R_TIPC));
+    for(const sg of [-1,1]){const fl=fillet([cx+sg*P.W_TIP/2,L-P.L_TIP],[sg,0],[0,1],P.R_SHOULDER); if(fl) solid=solid.add(fl);}
+  }
+  if(nA){
+    solid=solid.add(roundRect(cx-P.W_TIP/2,0,cx+P.W_TIP/2,P.L_TIP+3,P.R_TIPC));
+    for(const sg of [-1,1]){const fl=fillet([cx+sg*P.W_TIP/2,P.L_TIP],[sg,0],[0,-1],P.R_SHOULDER); if(fl) solid=solid.add(fl);}
+  }
   // スリット（くさび＋丸い先端＋根元フィレット）
   const cuts=[];
   for(const g of lay.gaps){
@@ -295,10 +354,12 @@ function buildPart(wasm,pl){
   }
   // フィレット三角の先端が外形からはみ出した面積0の欠片を捨てる
   const top=CrossSection.compose(solid.subtract(CrossSection.union(cuts)).decompose().filter(q=>q.area()>0.01));
-  // 本体：上下ふちの面取り(C_EDGE)は 1段（内寄せ C/2）で近似。段を増やすと境目に微小な穴が出る
-  const H=P.T_TOTAL, c=P.C_EDGE, ns=1, cols=[top.extrude(H-2*c).translate([0,0,c])];
-  for(let i=0;i<ns;i++) cols.push(top.offset(-(c-(i+0.5)*c/ns),"Round",2,24).extrude(H-2*i*c/ns).translate([0,0,i*c/ns]));
-  const body=solidOnly(Manifold.union(cols));
+  // 本体：上下ふちの面取り(C_EDGE)は、縁の帯(内寄せ C/2・高さ C)を引いて1段で近似
+  // （柱を積む足し算方式だと溝とのブーリアンで微小な穴が出た）
+  const H=P.T_TOTAL, c=P.C_EDGE;
+  const band=top.offset(2,"Square").subtract(top.offset(-c/2,"Round",2,24));
+  const bands=Manifold.union([band.extrude(c+1).translate([0,0,-1]),band.extrude(c+1).translate([0,0,H-c])]);
+  const body=solidOnly(top.extrude(H).subtract(bands));
   // 溝の工具：station 間を凸な部品(円錐台・スロット・面取り三角)の hull でつなぐ
   const Zc=P.Z_CTR, TT=H+1.5, CH=P.CHAMFER, SEG=72;
   const circ=(y,d)=>{const a=[];for(let j=0;j<SEG;j++){const t=2*Math.PI*j/SEG;a.push([cx+d/2*Math.cos(t),y,Zc+d/2*Math.sin(t)]);}return a;};
@@ -313,17 +374,25 @@ function buildPart(wasm,pl){
     pieces.push(Manifold.hull([...slot(A[0],A[2]),...slot(B[0],B[2])]));
     for(const sg of [-1,1]) pieces.push(Manifold.hull([...tri(A[0],A[2],sg),...tri(B[0],B[2],sg)]));
   };
+  const nM=Math.ceil((L+2)/20);   // 本体の溝を全長に。長い凸包1本だと細長い三角でブーリアンが荒れるので刻む
+  for(let i=0;i<nM;i++) seg([-1+(L+2)*i/nM,P.D_TUBE,P.MOUTH],[-1+(L+2)*(i+1)/nM,P.D_TUBE,P.MOUTH]);
+  // 押し込み口：端面からの距離 u で station を作り、手前端は y=u、奥端は y=L-u に置く
   const A=P.L_END_A, Dc=P.D_CLIP, MC=P.MOUTH_CLIP;
-  let st;   // [y, 溝径, 溝口]
+  let st;   // [u, 溝径, 溝口]
   if(P.OPEN){
     const FL=P.END_FLARE, ME=MC+2*FL, MO=P.MOUTH_OPEN, y0=P.TAB_LEN, y1=A-P.TAB_LEN, r=P.RAMP;
     st=[[-1,Dc,ME+2],[0,Dc,ME],[FL,Dc,MC],[y0,Dc,MC],[y0+r,Dc,MO],[y1-r,Dc,MO],[y1,Dc,MC],[A-FL,Dc,MC],[A+0.3,Dc,ME+0.6]];
   } else st=[[-1,Dc,MC],[A,Dc,MC]];
-  for(let i=0;i+1<st.length;i++) seg(st[i],st[i+1]);
-  const yM=A+P.L_TAPER;
-  if(P.L_TAPER>0) seg([A,Dc,MC],[yM,P.D_TUBE,P.MOUTH]);
-  const nM=Math.ceil((L+1-yM)/20);   // 長い凸包1本だと細長い三角でブーリアンが荒れるので刻む
-  for(let i=0;i<nM;i++) seg([yM+(L+1-yM)*i/nM,P.D_TUBE,P.MOUTH],[yM+(L+1-yM)*(i+1)/nM,P.D_TUBE,P.MOUTH]);
+  const segs=[];
+  for(let i=0;i+1<st.length;i++) segs.push([st[i],st[i+1]]);
+  if(P.L_TAPER>0) segs.push([[A,Dc,MC],[A+P.L_TAPER,P.D_TUBE,P.MOUTH]]);
+  for(const [end,sgn,y0] of [[P.endA,1,0],[P.endB,-1,L]]){
+    if(end!=="clip") continue;
+    for(const [a,b] of segs){
+      const pa=[y0+sgn*a[0],a[1],a[2]], pb=[y0+sgn*b[0],b[1],b[2]];
+      sgn>0?seg(pa,pb):seg(pb,pa);
+    }
+  }
   const cutter=Manifold.union(pieces);
   function solidOnly(m){ // 体積をもつ塊だけ残す（段の境目にできる体積0の薄膜を捨てる）
     const ps=m.decompose().filter(q=>Math.abs(q.getProperties().volume)>1e-3);
@@ -339,44 +408,50 @@ function buildPart(wasm,pl){
   part=part.translate([-bb.min[0],-bb.min[1],-bb.min[2]]);
   // 中心線（プレビューでホースを描く用）
   const center=[]; for(let i=0;i<=300;i++){const y=-2+(L+4)*i/300;const p=f(cx,y);center.push([p[0]-bb.min[0],p[1]-bb.min[1],Zc-bb.min[2]]);}
-  return {part,flat,center};
+  return {part,center};
 }
 // ==CORE END==
 
 
 // ---- UI ----
-const DEF={D:"12",theta:"100",dia:"114.4",stiff:"back",open:"on",clip:"1"};
-const fmt=(v,d=1)=>(+v).toFixed(d).replace(/\.0+$/,"");
+const DEF={D:"12",theta:"100",len:"99.8",gapA:"10",gapB:"3",gapMode:"half",endA:"clip",endB:"neck",clip:"1"};
+const fmt=(v,d=1)=>(+v).toFixed(d).replace(/\.0+$/,"").replace(/(\.\d*?)0+$/,"$1");
+const END_NAME={clip:"押し込み口",neck:"先細",flat:"全幅"};
 function readU(){
-  return {D:+$("D").value,theta:+$("theta").value,dia:+$("dia").value,
-          stiff:$("stiff").value,open:$("open").value==="on",clipExtra:+$("clip").value};
+  return {D:+$("D").value,theta:+$("theta").value,len:+$("len").value,
+          gapA:+$("gapA").value,gapB:+$("gapB").value,gapMode:$("gapMode").value,
+          endA:$("endA").value,endB:$("endB").value,clipExtra:+$("clip").value};
 }
 let range=null, pl=null, result=null;
 function refreshRange(){
-  const u=readU(); range=diaRange(u);
-  const inp=$("dia");
+  const u=readU(); range=lenRange(u);
+  const inp=$("len");
   if(range){
-    inp.min=range[0]; inp.max=range[1];
-    const v=clamp(+inp.value,range[0],range[1]); inp.value=v;
-    $("diaRange").textContent=`この直径・角度で作れる範囲: ${fmt(range[0])}〜${fmt(range[1])} mm`;
-  } else $("diaRange").textContent="この直径・角度では作れる弧がありません（角度を下げてください）";
-  const P=deriveParams(u);
-  $("clip").max=fmt(P.CLIP_MAX,1);
+    inp.min=fmt(Math.floor(range[0]*10)/10); inp.max=fmt(Math.ceil(range[1]*10)/10);
+    inp.value=clamp(+inp.value,+inp.min,+inp.max);
+    $("lenRange").textContent=`この直径・角度・間隔で作れる長さ: ${fmt(range[0])}〜${fmt(range[1])} mm`;
+  } else $("lenRange").textContent="この組み合わせでは作れる長さがありません（角度か間隔を下げてください）";
+  $("clip").max=fmt(deriveParams(u).CLIP_MAX,1);
 }
 function syncLabels(){
+  const P=deriveParams(readU());
   $("DV").textContent=fmt($("D").value)+" mm"; $("Dn").value=$("D").value;
   $("thetaV").textContent=$("theta").value+"°"; $("thetan").value=$("theta").value;
-  $("diaV").textContent=fmt($("dia").value)+" mm（半径 "+fmt($("dia").value/2,2)+"）"; $("dian").value=$("dia").value;
+  $("lenV").textContent=fmt($("len").value)+" mm"; $("lenn").value=$("len").value;
+  for(const k of ["gapA","gapB"]) $(k+"V").textContent=`すきま ${fmt(gapMM(P,+$(k).value),2)} mm（開き ${fmt($(k).value)}°）`;
   $("clipV").textContent="+"+fmt($("clip").value)+" mm";
+  const pv=`${$("gapA").value},${$("gapB").value}`;
+  $("gapPreset").value=[...$("gapPreset").options].some(o=>o.value===pv)?pv:"";
 }
 function renderInfo(){
   const el=$("info");
   if(!range||!pl){el.innerHTML='<span class="ng">作れる形がありません</span>';return;}
   if(!pl.ok){el.innerHTML=`<span class="ng">この組み合わせは不可: ${pl.why}</span>`;return;}
   const P=pl.P, f=pl.fit, L=[];
-  L.push(`リブ <b>${f.N}枚</b>（関節の開き ${fmt(JOINT_TIGHT*f.scale,2)}°／${fmt(JOINT_LOOSE*f.scale,2)}°）`);
+  L.push(`リブ <b>${f.N}枚</b>・実際の蛇腹の長さ <b>${fmt(f.lay.Ls,1)} mm</b>・全長 ${fmt(f.lay.L,1)} mm`);
+  L.push(`弧の直径（ホース中心） <b>${fmt(2*pl.Rc,1)} mm</b>`);
   L.push(`断面 <b>幅${fmt(P.W_TOTAL,2)} × 厚み${fmt(P.T_TOTAL,2)} mm</b>・リブ厚 ${fmt(P.T_RIB,2)}`);
-  L.push(`溝 Ø${fmt(P.D_TUBE,2)}（溝口 ${fmt(P.MOUTH,2)}）／手前端 Ø${fmt(P.D_CLIP,2)}（溝口 ${fmt(P.MOUTH_CLIP,2)}${P.OPEN?"・中ほど開口":""}）`);
+  L.push(`溝 Ø${fmt(P.D_TUBE,2)}（溝口 ${fmt(P.MOUTH,2)}）`+([P.endA,P.endB].includes("clip")?`／押し込み口 Ø${fmt(P.D_CLIP,2)}（溝口 ${fmt(P.MOUTH_CLIP,2)}）`:""));
   L.push(`曲げ後の内側リブ ${fmt(pl.chk.ribIn,2)} mm・関節すきま最小 ${fmt(pl.chk.minGap,2)} mm`);
   if(pl.k>0) L.push(`<span class="warn">端どうしが重なるので渦巻きにしています（中心線の半径 ${fmt(pl.chk.mp.R0,1)} → ${fmt(pl.chk.mp.Rt,1)} mm）</span>`);
   if(result){
@@ -388,10 +463,10 @@ function renderInfo(){
   el.innerHTML=L.join("<br>");
 }
 function settingsLines(){
-  const L=[["ホース直径",fmt($("D").value)+"mm"],["弧の直径",fmt($("dia").value)+"mm"],["角度",$("theta").value+"°"]];
-  if($("stiff").value!==DEF.stiff) L.push(["硬さ",{front:"手前キツめ",even:"一様"}[$("stiff").value]]);
-  if($("open").value!==DEF.open) L.push(["天面開口","なし"]);
-  if($("clip").value!==DEF.clip) L.push(["手前端の溝","+"+fmt($("clip").value)+"mm"]);
+  const L=[["ホース直径",fmt($("D").value)+"mm"],["角度",$("theta").value+"°"],["蛇腹の長さ",fmt($("len").value)+"mm"],
+    ["間隔",`手前${fmt($("gapA").value)}°/奥${fmt($("gapB").value)}°`+($("gapMode").value==="linear"?"（なだらか）":"")],
+    ["先の形",`手前${END_NAME[$("endA").value]}/奥${END_NAME[$("endB").value]}`]];
+  if($("clip").value!==DEF.clip) L.push(["押し込み口の溝","+"+fmt($("clip").value)+"mm"]);
   return L;
 }
 function renderSummary(){
@@ -423,14 +498,23 @@ function meshToGeo(mesh){
   for(let i=0;i<n;i++){const v=tv[i]*3;pos[i*3]=vp[v];pos[i*3+1]=vp[v+1];pos[i*3+2]=vp[v+2];}
   const g=new THREE.BufferGeometry(); g.setAttribute("position",new THREE.BufferAttribute(pos,3)); g.computeVertexNormals(); return g;
 }
+function label(txt,p,dz,size){
+  const cv=document.createElement("canvas"); cv.width=128; cv.height=64;
+  const x=cv.getContext("2d"); x.fillStyle="rgba(0,0,0,.55)"; x.beginPath(); x.roundRect(4,8,120,48,10); x.fill();
+  x.fillStyle="#ffd28a"; x.font="bold 30px sans-serif"; x.textAlign="center"; x.textBaseline="middle"; x.fillText(txt,64,33);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),depthTest:false}));
+  const s=Math.max(12,size*0.1); sp.scale.set(s,s/2,1); sp.position.set(p[0],p[1],p[2]+dz); return sp;
+}
 function showMeshes(){
-  if(group){scene.remove(group);group.traverse(o=>{if(o.geometry)o.geometry.dispose();});}
+  if(group){scene.remove(group);group.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material&&o.material.map)o.material.map.dispose();});}
   group=new THREE.Group();
   group.add(new THREE.Mesh(meshToGeo(result.part.getMesh()),new THREE.MeshStandardMaterial({color:0x8fb8d8,roughness:.5,flatShading:true})));
   const curve=new THREE.CatmullRomCurve3(result.center.map(p=>new THREE.Vector3(...p)));
   group.add(new THREE.Mesh(new THREE.TubeGeometry(curve,300,pl.P.D_TUBE/2,24,false),
     new THREE.MeshStandardMaterial({color:0xff9a3c,transparent:true,opacity:.35,depthWrite:false})));
   const bb=result.part.boundingBox(), c=bb.min.map((v,i)=>(v+bb.max[i])/2), size=Math.max(...bb.max.map((v,i)=>v-bb.min[i]));
+  const cp=result.center;
+  for(const [txt,p] of [["手前",cp[0]],["奥",cp[cp.length-1]]]) group.add(label(txt,p,pl.P.T_TOTAL+6,size));
   group.position.set(-c[0],-c[1],-c[2]);
   scene.add(group);
   if(Math.abs(size-lastSize)>size*0.25){   // 大きさが大きく変わったときだけ視点を合わせ直す
@@ -456,7 +540,7 @@ $("dlstl").addEventListener("click",()=>{
   if(!result) return;
   const a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob([toSTL(result.part.getMesh())],{type:"model/stl"}));
-  a.download=`蛇腹サポーター_ホース${fmt($("D").value)}_弧${fmt($("dia").value)}_${$("theta").value}度.stl`;
+  a.download=`蛇腹サポーター_ホース${fmt($("D").value)}_長さ${fmt(pl.fit.lay.Ls,1)}_${$("theta").value}度.stl`;
   a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),5000);
 });
 
@@ -468,7 +552,7 @@ function update(){
   clearTimeout(timer);
   timer=setTimeout(()=>{
     try{
-      result=null;
+      if(result){result.part.delete(); result=null;}   // WASM 側のメモリを解放
       pl=range?plan(readU()):null;
       if(pl&&pl.ok){ result=buildPart(wasm,pl); showMeshes();
         $("status").textContent=`${result.part.numTri().toLocaleString()} 三角形`; }
@@ -479,16 +563,18 @@ function update(){
   },250);
 }
 function onRangeInputs(){ refreshRange(); update(); }
-for(const id of ["D","theta","stiff","open","clip"]) $(id).addEventListener("input",onRangeInputs);
-$("dia").addEventListener("input",update);
-for(const [n,id] of [["Dn","D"],["thetan","theta"],["dian","dia"]])
+for(const id of ["D","theta","gapA","gapB","gapMode","endA","endB","clip"]) $(id).addEventListener("input",onRangeInputs);
+$("len").addEventListener("input",update);
+$("gapPreset").addEventListener("input",()=>{const v=$("gapPreset").value; if(!v) return;
+  const [a,b]=v.split(","); $("gapA").value=a; $("gapB").value=b; onRangeInputs();});
+for(const [n,id] of [["Dn","D"],["thetan","theta"],["lenn","len"]])
   $(n).addEventListener("change",()=>{const t=$(id); t.value=clamp(+$(n).value,+t.min,+t.max); t.dispatchEvent(new Event("input"));});
 document.querySelectorAll(".mb").forEach(b=>b.addEventListener("click",()=>{
   const inp=$(b.dataset.t); b.dataset.d==="1"?inp.stepUp():inp.stepDown(); inp.dispatchEvent(new Event("input"));
 }));
 
 initGL(); refreshRange(); update();
-window._plan=plan; window._getResult=()=>result; window._diaRange=diaRange;
+window._plan=plan; window._getResult=()=>result; window._lenRange=lenRange;
 </script>
 </body>
 </html>
