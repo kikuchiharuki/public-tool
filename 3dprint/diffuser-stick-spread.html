@@ -66,6 +66,7 @@
   <div class="grp"><b>スティックの配り方</b>
     <div class="row" id="row_N"><label>本数</label><input type="range" id="N" min="3" max="12" step="1"><span class="v" id="N_v"></span></div>
     <div class="row"><label id="tiltLabel">傾き</label><input type="range" id="TILT" min="0" max="30" step="0.5"><span class="v" id="TILT_v"></span></div>
+    <div class="row" title="スティックどうしが一番近づく（上から見て交わる）高さ。差し込み部の下端から測る"><label>交点の高さ</label><input type="range" id="ZW" min="-10" max="80" step="0.5"><span class="v" id="ZW_v"></span></div>
     <div class="row" id="row_TWIST"><label>ねじり</label><input type="range" id="TWIST" min="0" max="90" step="5"><span class="v" id="TWIST_v"></span></div>
     <div class="btns" id="row_ORDER">
       <button data-order="center">開き優先</button>
@@ -87,6 +88,12 @@
 
   <div class="grp"><b>サポーター</b>
     <div class="row"><label>差し込み長</label><input type="range" id="PL" min="5" max="30" step="0.5"><span class="v" id="PL_v"></span></div>
+  </div>
+
+  <div class="grp"><b>瓶の中で最大に開く</b>
+    <div class="row"><label>先端の上限</label><input type="range" id="TIPF" min="0.8" max="1.5" step="0.05"><span class="v" id="TIPF_v"></span></div>
+    <div class="btns"><button id="maxInside">瓶の中で最大に開く</button></div>
+    <div class="note" id="maxNote">先端の広がりを「瓶の外径×上限」以内に抑えたまま、瓶の底での広がりが最大になる傾きと交点の高さを探す。</div>
   </div>
 
   <div class="grp"><b>結果</b>
@@ -120,11 +127,15 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 // 傾きスライダーはモードごとに別の値を持つ: TILT=丸穴の傾き(12°)、FAN=扇の両端の開き角(40°)、
 // TOUT=10本版の一番外側の傾き(10°)。PITCH=扇で前後にずらす面の間隔（スティック径＋0.3）。
 // ORDER=扇の前後の並び: center=傾きの大きいものを中央寄りの面に（開き優先）/ lr・rl=左右の順に一列
-const DEF = {MODE:'ring', ORDER:'center', N:5, TILT:12, FAN:40, TOUT:10, TWIST:90, THROAT:3.8, PITCH:3.3,
+// ZW5/ZWF/ZW10=モードごとの交点（喉・扇の要）の高さ。差し込み部の下端から。既定は各3Dモデルと同じ。
+// TIPF=「瓶の中で最大に開く」で先端の広がりを抑える上限（瓶の外径比。1.10＝外径から一回り）。
+const DEF = {MODE:'ring', ORDER:'center', ZW5:0, ZWF:4.7, ZW10:7.9, TIPF:1.10, N:5, TILT:12, FAN:40, TOUT:10, TWIST:90, THROAT:3.8, PITCH:3.3,
              SD:3.0, SL:250, BD:70.5, DEPTH:62, MD:16.8, PL:15};
-const KEYS = ['N','TILT','TWIST','PITCH','THROAT','SD','SL','BD','DEPTH','MD','PL'];
+const KEYS = ['N','TILT','ZW','TWIST','PITCH','THROAT','SD','SL','BD','DEPTH','MD','PL','TIPF'];
 const TILT_KEY = {ring:'TILT', fan:'FAN', room:'TOUT'};
 const tiltKey = () => TILT_KEY[P.MODE];
+const zwKey = () => ({ring:'ZW5', fan:'ZWF', room:'ZW10'})[P.MODE];
+const realKey = k => k === 'TILT' ? tiltKey() : k === 'ZW' ? zwKey() : k;   // モード別の値を持つスライダー
 const P = {...DEF};
 // サポーターと瓶の固定寸法（実測・設計値）
 const FLANGE_W = 3.75, FLANGE_T = 0.8, PLUG_GAP = 0.2;   // ツバ張り出し/厚み・口とのすき間
@@ -161,18 +172,18 @@ function line5(i){
   const phi = 2*Math.PI*i/P.N;
   const t = P.TILT*Math.PI/180, b = P.TWIST*Math.PI/180;
   const sr = Math.sin(t)*Math.cos(b), st = Math.sin(t)*Math.sin(b);
-  return {
-    p: new THREE.Vector3(P.THROAT*Math.cos(phi), P.THROAT*Math.sin(phi), 0),
-    d: new THREE.Vector3(Math.cos(phi)*sr - Math.sin(phi)*st,
-                         Math.sin(phi)*sr + Math.cos(phi)*st, Math.cos(t))
-  };
+  const d = new THREE.Vector3(Math.cos(phi)*sr - Math.sin(phi)*st,
+                              Math.sin(phi)*sr + Math.cos(phi)*st, Math.cos(t));
+  // 交点の高さ ZW5 で軸から THROAT の位置を通る
+  const pw = new THREE.Vector3(P.THROAT*Math.cos(phi), P.THROAT*Math.sin(phi), P.ZW5);
+  return {p: pw.addScaledVector(d, -P.ZW5 / d.z), d};
 }
 // 10本版: 断面が高さに応じて回転・拡大するだけの直線群。外側ほど傾きが大きく、互いに交わらない。
 function geom10(){
-  const ZT = (P.PL + FLANGE_T)/2;
+  const ZT = P.ZW10, TOP = P.PL + FLANGE_T;                  // 断面が一番小さくなる高さ（既定は差し込み部の中央）
   const R0 = Math.max(0.1, P.MD/2 - P.SD/2 - BORE_GAP);     // 端での軸位置の半径上限（瓶の口で決まる）
   const K = Math.tan(P.TOUT*Math.PI/180) / R0;                // ねじれ率[1/mm]
-  const R = R0 / Math.hypot(1, ZT*K);                         // z=ZTでの半径上限
+  const R = R0 / Math.max(Math.hypot(1, ZT*K), Math.hypot(1, (TOP - ZT)*K));   // 差し込み部の両端で口に収める
   return {ZT, K, R};
 }
 function line10(i){
@@ -186,13 +197,13 @@ function line10(i){
 // 扇: 正面(XZ面)から見て5本が扇状に開く。1本ずつ前後(y)にずらした別々の面に置くので、
 // 正面から見て交差しても実際には当たらない（最接近＝前後の間隔）。
 // 傾きの大きいスティックほど中央寄りの面に置き、端の面でも瓶の口に収まるようにする。
-// 扇の要（正面から見て交わる高さ）は、口の穴の上下中央。3Dモデルは 扇5本.py（同じ配置）。
+// 扇の要（正面から見て交わる高さ）は ZWF。既定は口の穴の上下中央。3Dモデルは 扇5本.py（既定と同じ配置）。
 // i本目(角度 -2θ,-θ,0,θ,2θ)を置く面(×PITCH、負が手前)。
 // 一列だと傾きの大きい両端が前後の端の面に来るので、口に収まる開き角は小さくなる。
 const FAN_SLOT = {center:[1, 2, -2, -1, 0], lr:[-2, -1, 0, 1, 2], rl:[2, 1, 0, -1, -2]};
 function lineFan(i){
   const a = (i - 2) * P.FAN/4 * Math.PI/180;
-  const zc = P.PL - (NECK_H + INNER_WALL)/2;
+  const zc = P.ZWF;
   return {
     p: new THREE.Vector3(-zc*Math.tan(a), FAN_SLOT[P.ORDER][i]*P.PITCH, 0),
     d: new THREE.Vector3(Math.sin(a), 0, Math.cos(a))
@@ -281,8 +292,9 @@ function analyze(){
   const xs = ends.map(e => e.b.x);
   const spread = P.MODE === 'fan' ? Math.max(...xs) - Math.min(...xs) + P.SD
     : 2 * Math.max(...ends.map(e => Math.hypot(e.b.x, e.b.y) + r));
+  const inside = 2 * Math.max(...ends.map(e => Math.hypot(e.a.x, e.a.y) + r));   // 瓶の底での外接円の直径
   const tilts = lines.map(L => Math.acos(L.d.z) * 180/Math.PI);
-  return {ends, gap, bore, wall, spread, reach: ends[0].b.z - P.PL,
+  return {ends, gap, bore, wall, spread, inside, reach: ends[0].b.z - P.PL,
           tmin: Math.min(...tilts), tmax: Math.max(...tilts)};
 }
 
@@ -298,6 +310,31 @@ function fanLimit(){
   return Math.floor(lo*2)/2;                       // スライダーの刻み0.5°に切り下げ
 }
 
+// 瓶の中で最大に開く: 交点の高さごとに、干渉せず先端が「外径×TIPF」に収まる最大の傾きを二分探索し、
+// 瓶の底での広がりが一番大きい組を選ぶ（傾きを上げるほど底も先端も広がるので、傾きは上限が最良）。
+function maximizeInside(){
+  const tk = tiltKey(), zk = zwKey(), keep = [P[tk], P[zk]];
+  const tmax = P.MODE === 'fan' ? 60 : 30;
+  const fits = () => { const A = analyze(); return !isBad(A) && A.spread <= P.TIPF*P.BD + 1e-6 ? A : null; };
+  const maxTilt = () => {
+    P[tk] = 0; if (!fits()) return null;
+    let lo = 0, hi = tmax;
+    for (let k = 0; k < 14; k++){ P[tk] = (lo + hi)/2; if (fits()) lo = P[tk]; else hi = P[tk]; }
+    return Math.floor(lo*2)/2;                     // スライダーの刻み0.5°に切り下げ
+  };
+  let best = null;
+  const tryZ = z => {
+    P[zk] = z; const t = maxTilt(); if (t === null) return;
+    P[tk] = t; const A = fits();
+    if (A && (!best || A.inside > best.inside)) best = {z, t, inside: A.inside};
+  };
+  for (let z = -10; z <= 80; z += 2) tryZ(z);
+  if (best) for (let z = best.z - 2; z <= best.z + 2; z += 0.5) tryZ(z);
+  if (!best){ [P[tk], P[zk]] = keep; return null; }
+  P[zk] = best.z; P[tk] = best.t;
+  return best;
+}
+
 function render(){
   clear(root);
   const A = analyze();
@@ -309,6 +346,7 @@ function render(){
   const judge = (v, t) => `<span class="${v < 0 ? 'ng' : 'ok'}">${t}</span>`;
   $('out').innerHTML = [
     [P.MODE === 'fan' ? '先端の広がり（正面の幅）' : '先端の広がり（直径）', f(A.spread)],
+    ['瓶の底での広がり（直径）', f(A.inside)],
     ['瓶の口から出る長さ', f(A.reach)],
     ['スティック同士のすき間', nSticks() > 1 ? judge(A.gap, f(A.gap)) : '—'],
     ['瓶の口とのすき間', A.bore < -TOUCH ? `<span class="ng">口より外（${f(A.bore)}）</span>`
@@ -333,7 +371,7 @@ function setView(kind){
 }
 
 // ── UI ────────────────────────────────────────────────────────────────
-const UNIT = {N:'本', TILT:'°', TWIST:'°', PITCH:'mm', THROAT:'mm', SD:'mm', SL:'mm', BD:'mm', DEPTH:'mm', MD:'mm', PL:'mm'};
+const UNIT = {N:'本', TILT:'°', ZW:'mm', TIPF:'', TWIST:'°', PITCH:'mm', THROAT:'mm', SD:'mm', SL:'mm', BD:'mm', DEPTH:'mm', MD:'mm', PL:'mm'};
 // 保存キーに版番号を付ける。既定値を実測値に入れ替えたとき、前に開いた人の古い保存値が
 // そのまま残って「既定値のはずが違う」状態になるのを避けるため。既定値を変えたら上げる。
 const KEY = 'diffuser-stick-spread.v4';
@@ -347,9 +385,10 @@ const MODE_NOTE = {
 function syncUI(){
   $('TILT').max = P.MODE === 'fan' ? 60 : 30;     // 値を入れる前に範囲を合わせる
   for (const k of KEYS){
-    const v = k === 'TILT' ? P[tiltKey()] : P[k];
+    const v = P[realKey(k)];
     $(k).value = v;
-    $(k+'_v').textContent = (k === 'N' ? v : (+v).toFixed(1)) + UNIT[k];
+    $(k+'_v').textContent = k === 'N' ? v + UNIT[k] : k === 'TIPF' ? '×' + v.toFixed(2)
+      : (+v).toFixed(1) + UNIT[k];
   }
   const ring = P.MODE === 'ring';
   $('row_N').classList.toggle('off', !ring);       // 扇・10本版は本数固定
@@ -365,7 +404,7 @@ function syncUI(){
 }
 for (const k of KEYS){
   $(k).addEventListener('input', () => {
-    P[k === 'TILT' ? tiltKey() : k] = +$(k).value;
+    P[realKey(k)] = +$(k).value;
     if (k === 'MD') P.THROAT = Math.min(P.THROAT, P.MD/2);
     syncUI(); render(); save();
   });
@@ -377,13 +416,20 @@ for (const b of document.querySelectorAll('[data-mode]'))
   };
 for (const b of document.querySelectorAll('[data-order]'))
   b.onclick = () => { P.ORDER = b.dataset.order; syncUI(); render(); save(); };
+$('maxInside').onclick = () => {
+  const b = maximizeInside();
+  $('maxNote').textContent = b
+    ? `先端 ${(P.TIPF*P.BD).toFixed(0)}mm 以内で、瓶の底での広がり ${b.inside.toFixed(1)}mm（交点の高さ ${b.z.toFixed(1)}mm）。`
+    : '条件を満たす開き方が見つからない（先端の上限を上げるか、スティック径・本数を見直す）。';
+  syncUI(); render(); save();
+};
 $('fanMax').onclick = () => { const v = fanLimit(); if (v !== null){ P.FAN = v; syncUI(); render(); save(); } };
 for (const b of document.querySelectorAll('[data-view]')) b.onclick = () => setView(b.dataset.view);
 $('reset').onclick = () => { Object.assign(P, DEF); syncUI(); render(); setView('iso'); save(); };
 
 try{
   const s = JSON.parse(localStorage.getItem(KEY) || '{}');
-  for (const k of [...KEYS,'FAN','TOUT']) if (typeof s[k] === 'number') P[k] = s[k];
+  for (const k of [...KEYS,'FAN','TOUT','ZW5','ZWF','ZW10']) if (typeof s[k] === 'number') P[k] = s[k];
   const m = {5:'ring', 10:'room'}[s.MODE] ?? s.MODE;   // 以前は数値で保存していた
   if (m in TILT_KEY) P.MODE = m;
   if (s.ORDER in FAN_SLOT) P.ORDER = s.ORDER;
