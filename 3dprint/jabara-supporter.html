@@ -3,12 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>蛇腹サポーター STL生成</title>
+<title>蛇腹サポーター / Bellows Hose Support</title>
 <style>
   *{box-sizing:border-box}
   body{font-family:"Hiragino Kaku Gothic ProN",sans-serif;margin:0;display:flex;height:100vh;background:#1d1d1f;color:#eee}
   #panel{width:360px;padding:14px 16px;overflow-y:auto;background:#2a2a2d;flex-shrink:0}
   h1{font-size:15px;margin:0 0 2px}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  #langBtn{flex-shrink:0;background:#3a3a3e;color:#ddd;border:1px solid #555;border-radius:5px;font-size:11px;padding:4px 8px;cursor:pointer}
+  #langBtn:hover{background:#4a4a50}
+  #langBtn b{color:#7fd0a0;font-weight:bold}
   .sub{font-size:11px;color:#888;margin-bottom:10px;line-height:1.6}
   .step{margin:14px 0 6px;font-size:13px;font-weight:bold;color:#7fd0a0}
   .step .n{display:inline-block;background:#2a8a55;color:#fff;border-radius:50%;width:18px;height:18px;text-align:center;line-height:18px;font-size:11px;margin-right:6px}
@@ -46,60 +50,59 @@
 </head>
 <body>
 <div id="panel">
-  <h1>蛇腹サポーター STL生成</h1>
-  <div class="sub">ホースや紐を好きな円弧に沿わせて保持する板バネ。3つの値を決めるとSTLができます。平らな面を下にして、サポートなしで印刷します。</div>
+  <div class="top"><h1 data-i="title"></h1><button id="langBtn" title="Language">Language: <b id="langName"></b></button></div>
+  <div class="sub" data-i="sub"></div>
 
-  <div class="step"><span class="n">1</span>ホース・紐の直径</div>
-  <label>直径 <span class="val" id="DV"></span></label>
+  <div class="step"><span class="n">1</span><span data-i="s1"></span></div>
+  <label><span data-i="dLabel"></span> <span class="val" id="DV"></span></label>
   <div class="srow"><button class="mb" data-t="D" data-d="-1">−</button><input type="range" id="D" min="4" max="30" step="0.1" value="12"><button class="mb" data-t="D" data-d="1">＋</button><input type="number" id="Dn" min="4" max="30" step="0.1"></div>
 
-  <div class="step"><span class="n">2</span>弧の角度</div>
-  <label>角度（360°で一周） <span class="val" id="thetaV"></span></label>
+  <div class="step"><span class="n">2</span><span data-i="s2"></span></div>
+  <label><span data-i="thLabel"></span> <span class="val" id="thetaV"></span></label>
   <div class="srow"><button class="mb" data-t="theta" data-d="-1">−</button><input type="range" id="theta" min="30" max="360" step="1" value="100"><button class="mb" data-t="theta" data-d="1">＋</button><input type="number" id="thetan" min="30" max="360" step="1"></div>
 
-  <div class="step"><span class="n">3</span>蛇腹の長さ</div>
-  <label>ホースに沿った長さ（両端ブロックを除く） <span class="val" id="lenV"></span></label>
+  <div class="step"><span class="n">3</span><span data-i="s3"></span></div>
+  <label><span data-i="lenLabel"></span> <span class="val" id="lenV"></span></label>
   <div class="srow"><button class="mb" data-t="len" data-d="-1">−</button><input type="range" id="len" min="30" max="400" step="0.1" value="99.8"><button class="mb" data-t="len" data-d="1">＋</button><input type="number" id="lenn" step="0.1"></div>
   <div class="range" id="lenRange"></div>
 
-  <div class="step"><span class="n">4</span>蛇腹の間隔</div>
+  <div class="step"><span class="n">4</span><span data-i="s4"></span></div>
   <select id="gapPreset">
-    <option value="">（下のスライダーで個別に）</option>
-    <option value="10,10">全体を大きく</option>
-    <option value="3,3">全体を小さく</option>
-    <option value="10,3" selected>手前が大きく、奥が小さく</option>
-    <option value="3,10">手前が小さく、奥が大きく</option>
+    <option value="" data-i="pCustom"></option>
+    <option value="10,10" data-i="pBig"></option>
+    <option value="3,3" data-i="pSmall"></option>
+    <option value="10,3" data-i="pBigSmall" selected></option>
+    <option value="3,10" data-i="pSmallBig"></option>
   </select>
-  <label>手前側の間隔 <span class="val" id="gapAV"></span></label>
+  <label><span data-i="gapALabel"></span> <span class="val" id="gapAV"></span></label>
   <div class="srow"><button class="mb" data-t="gapA" data-d="-1">−</button><input type="range" id="gapA" min="0" max="15" step="0.5" value="10"><button class="mb" data-t="gapA" data-d="1">＋</button></div>
-  <label>奥側の間隔 <span class="val" id="gapBV"></span></label>
+  <label><span data-i="gapBLabel"></span> <span class="val" id="gapBV"></span></label>
   <div class="srow"><button class="mb" data-t="gapB" data-d="-1">−</button><input type="range" id="gapB" min="0" max="15" step="0.5" value="3"><button class="mb" data-t="gapB" data-d="1">＋</button></div>
-  <label>手前→奥の変わり方</label>
+  <label data-i="modeLabel"></label>
   <select id="gapMode">
-    <option value="half" selected>半分のところで切り替える</option>
-    <option value="linear">なだらかに変える</option>
+    <option value="half" data-i="mHalf" selected></option>
+    <option value="linear" data-i="mLinear"></option>
   </select>
 
-  <div class="step"><span class="n">5</span>先の形</div>
+  <div class="step"><span class="n">5</span><span data-i="s5"></span></div>
   <div class="row2">
-    <div><label>手前の端</label>
-      <select id="endA"><option value="clip" selected>押し込み口</option><option value="neck">先細</option><option value="flat">全幅</option></select></div>
-    <div><label>奥の端</label>
-      <select id="endB"><option value="clip">押し込み口</option><option value="neck" selected>先細</option><option value="flat">全幅</option></select></div>
+    <div><label data-i="endALabel"></label>
+      <select id="endA"><option value="clip" data-i="eClip" selected></option><option value="neck" data-i="eNeck"></option><option value="flat" data-i="eFlat"></option></select></div>
+    <div><label data-i="endBLabel"></label>
+      <select id="endB"><option value="clip" data-i="eClip"></option><option value="neck" data-i="eNeck" selected></option><option value="flat" data-i="eFlat"></option></select></div>
   </div>
-  <div class="range">押し込み口＝溝が少し太く、中ほどの天面が開いて真上から押し込める／先細＝先端が細くなる／全幅＝四角いまま</div>
-
-  <details>
-    <summary>詳細設定</summary>
-    <label>押し込み口の溝を太くする <span class="val" id="clipV"></span></label>
-    <div class="srow"><button class="mb" data-t="clip" data-d="-1">−</button><input type="range" id="clip" min="0" max="3" step="0.1" value="1"><button class="mb" data-t="clip" data-d="1">＋</button></div>
-  </details>
+  <div class="range" data-i="endNote"></div>
+  <div id="clipBox">
+    <label><span data-i="clipLabel"></span> <span class="val" id="clipV"></span></label>
+    <div class="srow"><button class="mb" data-t="clipD" data-d="-1">−</button><input type="range" id="clipD" min="12" max="18" step="0.1" value="13"><button class="mb" data-t="clipD" data-d="1">＋</button><input type="number" id="clipDn" step="0.1"></div>
+    <div class="range" id="clipRange"></div>
+  </div>
 
   <div id="info"></div>
-  <button class="btn" id="dlstl">STLをダウンロード</button>
+  <button class="btn" id="dlstl" data-i="dl"></button>
   <div id="summary"></div>
 </div>
-<div id="view"><div id="hint">ドラッグで回転・ホイールで拡大／オレンジはホースの通り道</div><div id="status"></div></div>
+<div id="view"><div id="hint" data-i="hint"></div><div id="status"></div></div>
 
 <script type="importmap">
 {"imports":{
@@ -141,7 +144,8 @@ function deriveParams(u){
   P.W_TIP=D+2*clamp(2*s,1.2,4);
   P.R_SHOULDER=clamp(2.5*s,1,4);
   P.R_TIPC=clamp(1.5*s,0.6,3);
-  P.CLIP_MAX=Math.max(0,Math.min(3,2*(P.WALL_BOT-1)));   // 押し込み口の溝底が 1mm を切らない
+  // 押し込み口の溝径の上限: 溝底が 1mm、溝の横の肉が側肉の半分(最低1.2mm)を切らない
+  P.CLIP_MAX=Math.max(0,Math.min(2*(P.WALL_BOT-1),2*P.WALL_SIDE-2*Math.max(1.2,0.5*P.WALL_SIDE)));
   P.D_CLIP=D+clamp(u.clipExtra||0,0,P.CLIP_MAX);
   P.MOUTH=D*0.875; P.MOUTH_CLIP=P.D_CLIP*0.9;
   P.L_TAPER=P.D_CLIP>D?Math.max(0.5,P.D_CLIP-D):0;
@@ -413,67 +417,148 @@ function buildPartInner(wasm,pl){
 // ==CORE END==
 
 
+// ---- 言語 ----
+const I18N={
+ja:{title:"蛇腹サポーター STL生成",
+ sub:"ホースや紐を好きな円弧に沿わせて保持する板バネ。値を決めるとSTLができます。平らな面を下にして、サポートなしで印刷します。",
+ s1:"ホース・紐の直径",dLabel:"直径",s2:"弧の角度",thLabel:"角度（360°で一周）",
+ s3:"蛇腹の長さ",lenLabel:"ホースに沿った長さ（両端ブロックを除く）",
+ s4:"蛇腹の間隔",pCustom:"（下のスライダーで個別に）",pBig:"全体を大きく",pSmall:"全体を小さく",pBigSmall:"手前が大きく、奥が小さく",pSmallBig:"手前が小さく、奥が大きく",
+ gapALabel:"手前側の間隔",gapBLabel:"奥側の間隔",modeLabel:"手前→奥の変わり方",mHalf:"半分のところで切り替える",mLinear:"なだらかに変える",
+ s5:"先の形",endALabel:"手前の端",endBLabel:"奥の端",eClip:"押し込み口",eNeck:"先細",eFlat:"全幅",
+ endNote:"押し込み口＝溝が太く、中ほどの天面が開いて真上から押し込める／先細＝先端が細くなる／全幅＝四角いまま",
+ clipLabel:"押し込み口の溝の直径",clipRange:(a,b)=>`設定できる範囲: ${a}〜${b} mm（ホース径〜溝底と横の肉が残るまで）`,clipNone:"（押し込み口を選ぶと使えます）",
+ dl:"STLをダウンロード",hint:"ドラッグで回転・ホイールで拡大／オレンジはホースの通り道",
+ lenRange:(a,b)=>`この直径・角度・間隔で作れる長さ: ${a}〜${b} mm`,lenNone:"この組み合わせでは作れる長さがありません（角度か間隔を下げてください）",
+ gapV:(mm,deg)=>`すきま ${mm} mm（開き ${deg}°）`,
+ noShape:"作れる形がありません",ng:w=>`この組み合わせは不可: ${w}`,
+ iRibs:(n,l,L)=>`リブ <b>${n}枚</b>・実際の蛇腹の長さ <b>${l} mm</b>・全長 ${L} mm`,
+ iDia:d=>`弧の直径（ホース中心） <b>${d} mm</b>`,
+ iSec:(w,h,t)=>`断面 <b>幅${w} × 厚み${h} mm</b>・リブ厚 ${t}`,
+ iGroove:(d,m)=>`溝 Ø${d}（溝口 ${m}）`,iClip:(d,m)=>`／押し込み口 Ø${d}（溝口 ${m}）`,
+ iBend:(r,g)=>`曲げ後の内側リブ ${r} mm・関節すきま最小 ${g} mm`,
+ iSpiral:(a,b)=>`端どうしが重なるので渦巻きにしています（中心線の半径 ${a} → ${b} mm）`,
+ iSize:(x,y,z,v,g)=>`外形 <b>${x} × ${y} × ${z} mm</b>・体積 ${v} cm³（PETGで約${g} g）`,
+ iPlate:"A1 mini のプレート（180 mm）に収まりません",
+ tri:n=>`${n} 三角形`,gen:"生成中…",err:"エラー: ",
+ sumTitle:"設定値",copy:"コピー",copied:"コピーしました",
+ kD:"ホース直径",kTh:"角度",kLen:"蛇腹の長さ",kGap:"間隔",kEnd:"先の形",kClip:"押し込み口の溝",
+ vGap:(a,b,lin)=>`手前${a}°/奥${b}°`+(lin?"（なだらか）":""),vEnd:(a,b)=>`手前${a}/奥${b}`,
+ near:"手前",far:"奥",file:"蛇腹サポーター",fHose:"ホース",fLen:"長さ",fDeg:"度",
+ why:w=>w},
+en:{title:"Bellows Hose Support — STL Generator",
+ sub:"A flexible spring clip that holds a hose or cord along an arc of your choice. Set the values to get an STL. Print flat side down, no supports needed.",
+ s1:"Hose / cord diameter",dLabel:"Diameter",s2:"Arc angle",thLabel:"Angle (360° = full loop)",
+ s3:"Bellows length",lenLabel:"Length along the hose (excluding end blocks)",
+ s4:"Bellows spacing",pCustom:"(set with the sliders below)",pBig:"Wide throughout",pSmall:"Narrow throughout",pBigSmall:"Wide at start, narrow at end",pSmallBig:"Narrow at start, wide at end",
+ gapALabel:"Spacing at start",gapBLabel:"Spacing at end",modeLabel:"Start → end transition",mHalf:"Switch at the midpoint",mLinear:"Gradual",
+ s5:"End shapes",endALabel:"Start end",endBLabel:"Far end",eClip:"Push-in clip",eNeck:"Tapered",eFlat:"Full width",
+ endNote:"Push-in clip = wider groove with an open top, so the hose snaps in from above / Tapered = narrow tip / Full width = square end",
+ clipLabel:"Push-in clip groove diameter",clipRange:(a,b)=>`Allowed: ${a}–${b} mm (hose diameter up to what leaves enough floor and side wall)`,clipNone:"(available when an end is set to Push-in clip)",
+ dl:"Download STL",hint:"Drag to rotate, scroll to zoom / orange = hose path",
+ lenRange:(a,b)=>`Possible lengths for this diameter, angle and spacing: ${a}–${b} mm`,lenNone:"No length works for this combination (lower the angle or the spacing)",
+ gapV:(mm,deg)=>`gap ${mm} mm (opening ${deg}°)`,
+ noShape:"No valid shape",ng:w=>`Not possible: ${w}`,
+ iRibs:(n,l,L)=>`<b>${n} ribs</b> · actual bellows length <b>${l} mm</b> · overall ${L} mm`,
+ iDia:d=>`Arc diameter (hose centerline) <b>${d} mm</b>`,
+ iSec:(w,h,t)=>`Section <b>${w} W × ${h} H mm</b> · rib ${t}`,
+ iGroove:(d,m)=>`Groove Ø${d} (opening ${m})`,iClip:(d,m)=>` / clip Ø${d} (opening ${m})`,
+ iBend:(r,g)=>`After bending: inner rib ${r} mm · min joint gap ${g} mm`,
+ iSpiral:(a,b)=>`Ends would overlap, so it is made as a spiral (centerline radius ${a} → ${b} mm)`,
+ iSize:(x,y,z,v,g)=>`Size <b>${x} × ${y} × ${z} mm</b> · volume ${v} cm³ (about ${g} g in PETG)`,
+ iPlate:"Does not fit the A1 mini plate (180 mm)",
+ tri:n=>`${n} triangles`,gen:"Generating…",err:"Error: ",
+ sumTitle:"Settings",copy:"Copy",copied:"Copied",
+ kD:"Hose dia",kTh:"Angle",kLen:"Bellows length",kGap:"Spacing",kEnd:"Ends",kClip:"Clip groove",
+ vGap:(a,b,lin)=>`start ${a}°/end ${b}°`+(lin?" (gradual)":""),vEnd:(a,b)=>`start ${a}/end ${b}`,
+ near:"Start",far:"End",file:"bellows-support",fHose:"hose",fLen:"len",fDeg:"deg",
+ why:w=>w.replace("内側の半径が小さすぎる","the inner radius is too small")
+   .replace(/関節すきまが([\d.]+)mmに潰れる/,"joint gaps close up to $1 mm")
+   .replace(/内側のリブが([\d.]+)mmまで薄くなる/,"inner ribs get as thin as $1 mm")
+   .replace("両端が本体にぶつかる","the ends collide with the body")}};
+let lang="ja";
+try{ lang=localStorage.getItem("jabaraLang")||(navigator.language.startsWith("ja")?"ja":"en"); }catch(_){ lang=navigator.language.startsWith("ja")?"ja":"en"; }
+const t=k=>I18N[lang][k];
+function applyLang(){
+  document.documentElement.lang=lang;
+  document.querySelectorAll("[data-i]").forEach(el=>{el.textContent=t(el.dataset.i);});
+  $("langName").textContent=lang==="ja"?"日本語":"English";
+}
+$("langBtn").addEventListener("click",()=>{
+  lang=lang==="ja"?"en":"ja"; try{localStorage.setItem("jabaraLang",lang);}catch(_){}
+  applyLang(); refreshRange(); syncLabels(); renderInfo(); renderSummary(); if(result) showMeshes();
+});
+
 // ---- UI ----
-const DEF={D:"12",theta:"100",len:"99.8",gapA:"10",gapB:"3",gapMode:"half",endA:"clip",endB:"neck",clip:"1"};
 const fmt=(v,d=1)=>(+v).toFixed(d).replace(/\.0+$/,"").replace(/(\.\d*?)0+$/,"$1");
-const END_NAME={clip:"押し込み口",neck:"先細",flat:"全幅"};
 function readU(){
   return {D:+$("D").value,theta:+$("theta").value,len:+$("len").value,
           gapA:+$("gapA").value,gapB:+$("gapB").value,gapMode:$("gapMode").value,
-          endA:$("endA").value,endB:$("endB").value,clipExtra:+$("clip").value};
+          endA:$("endA").value,endB:$("endB").value,clipExtra:+$("clipD").value-(+$("D").value)};
 }
 let range=null, pl=null, result=null;
+let clipVal=13;   // 押し込み口の溝径（スライダーは範囲外の値を即丸めるので JS 側で持つ）
+function refreshClip(){
+  const D=+$("D").value, P=deriveParams({D}), c=$("clipD");
+  const lo=D, hi=Math.floor((D+P.CLIP_MAX)*10)/10;
+  c.min=0; c.max=100; c.min=fmt(lo); c.max=fmt(hi);
+  clipVal=clamp(clipVal,lo,hi); c.value=clipVal;
+  const use=[$("endA").value,$("endB").value].includes("clip");
+  $("clipBox").style.opacity=use?1:.4;
+  $("clipRange").textContent=use?t("clipRange")(c.min,c.max):t("clipNone");
+}
 function refreshRange(){
+  refreshClip();
   const u=readU(); range=lenRange(u);
   const inp=$("len");
   if(range){
     inp.min=fmt(Math.floor(range[0]*10)/10); inp.max=fmt(Math.ceil(range[1]*10)/10);
     inp.value=clamp(+inp.value,+inp.min,+inp.max);
-    $("lenRange").textContent=`この直径・角度・間隔で作れる長さ: ${fmt(range[0])}〜${fmt(range[1])} mm`;
-  } else $("lenRange").textContent="この組み合わせでは作れる長さがありません（角度か間隔を下げてください）";
-  $("clip").max=fmt(deriveParams(u).CLIP_MAX,1);
+    $("lenRange").textContent=t("lenRange")(fmt(range[0]),fmt(range[1]));
+  } else $("lenRange").textContent=t("lenNone");
 }
 function syncLabels(){
   const P=deriveParams(readU());
   $("DV").textContent=fmt($("D").value)+" mm"; $("Dn").value=$("D").value;
   $("thetaV").textContent=$("theta").value+"°"; $("thetan").value=$("theta").value;
   $("lenV").textContent=fmt($("len").value)+" mm"; $("lenn").value=$("len").value;
-  for(const k of ["gapA","gapB"]) $(k+"V").textContent=`すきま ${fmt(gapMM(P,+$(k).value),2)} mm（開き ${fmt($(k).value)}°）`;
-  $("clipV").textContent="+"+fmt($("clip").value)+" mm";
+  for(const k of ["gapA","gapB"]) $(k+"V").textContent=t("gapV")(fmt(gapMM(P,+$(k).value),2),fmt($(k).value));
+  $("clipV").textContent="Ø"+fmt($("clipD").value)+" mm"; $("clipDn").value=$("clipD").value;
   const pv=`${$("gapA").value},${$("gapB").value}`;
   $("gapPreset").value=[...$("gapPreset").options].some(o=>o.value===pv)?pv:"";
 }
 function renderInfo(){
   const el=$("info");
-  if(!range||!pl){el.innerHTML='<span class="ng">作れる形がありません</span>';return;}
-  if(!pl.ok){el.innerHTML=`<span class="ng">この組み合わせは不可: ${pl.why}</span>`;return;}
+  if(!range||!pl){el.innerHTML=`<span class="ng">${t("noShape")}</span>`;return;}
+  if(!pl.ok){el.innerHTML=`<span class="ng">${t("ng")(t("why")(pl.why))}</span>`;return;}
   const P=pl.P, f=pl.fit, L=[];
-  L.push(`リブ <b>${f.N}枚</b>・実際の蛇腹の長さ <b>${fmt(f.lay.Ls,1)} mm</b>・全長 ${fmt(f.lay.L,1)} mm`);
-  L.push(`弧の直径（ホース中心） <b>${fmt(2*pl.Rc,1)} mm</b>`);
-  L.push(`断面 <b>幅${fmt(P.W_TOTAL,2)} × 厚み${fmt(P.T_TOTAL,2)} mm</b>・リブ厚 ${fmt(P.T_RIB,2)}`);
-  L.push(`溝 Ø${fmt(P.D_TUBE,2)}（溝口 ${fmt(P.MOUTH,2)}）`+([P.endA,P.endB].includes("clip")?`／押し込み口 Ø${fmt(P.D_CLIP,2)}（溝口 ${fmt(P.MOUTH_CLIP,2)}）`:""));
-  L.push(`曲げ後の内側リブ ${fmt(pl.chk.ribIn,2)} mm・関節すきま最小 ${fmt(pl.chk.minGap,2)} mm`);
-  if(pl.k>0) L.push(`<span class="warn">端どうしが重なるので渦巻きにしています（中心線の半径 ${fmt(pl.chk.mp.R0,1)} → ${fmt(pl.chk.mp.Rt,1)} mm）</span>`);
+  L.push(t("iRibs")(f.N,fmt(f.lay.Ls,1),fmt(f.lay.L,1)));
+  L.push(t("iDia")(fmt(2*pl.Rc,1)));
+  L.push(t("iSec")(fmt(P.W_TOTAL,2),fmt(P.T_TOTAL,2),fmt(P.T_RIB,2)));
+  L.push(t("iGroove")(fmt(P.D_TUBE,2),fmt(P.MOUTH,2))+([P.endA,P.endB].includes("clip")?t("iClip")(fmt(P.D_CLIP,2),fmt(P.MOUTH_CLIP,2)):""));
+  L.push(t("iBend")(fmt(pl.chk.ribIn,2),fmt(pl.chk.minGap,2)));
+  if(pl.k>0) L.push(`<span class="warn">${t("iSpiral")(fmt(pl.chk.mp.R0,1),fmt(pl.chk.mp.Rt,1))}</span>`);
   if(result){
     const bb=result.part.boundingBox(), ex=bb.max.map((v,i)=>v-bb.min[i]);
     const vol=result.part.getProperties().volume/1000;
-    L.push(`外形 <b>${fmt(ex[0],1)} × ${fmt(ex[1],1)} × ${fmt(ex[2],1)} mm</b>・体積 ${fmt(vol,2)} cm³（PETGで約${fmt(vol*1.27,0)} g）`);
-    if(Math.max(ex[0],ex[1])>180) L.push('<span class="warn">A1 mini のプレート（180 mm）に収まりません</span>');
+    L.push(t("iSize")(fmt(ex[0],1),fmt(ex[1],1),fmt(ex[2],1),fmt(vol,2),fmt(vol*1.27,0)));
+    if(Math.max(ex[0],ex[1])>180) L.push(`<span class="warn">${t("iPlate")}</span>`);
   }
   el.innerHTML=L.join("<br>");
 }
 function settingsLines(){
-  const L=[["ホース直径",fmt($("D").value)+"mm"],["角度",$("theta").value+"°"],["蛇腹の長さ",fmt($("len").value)+"mm"],
-    ["間隔",`手前${fmt($("gapA").value)}°/奥${fmt($("gapB").value)}°`+($("gapMode").value==="linear"?"（なだらか）":"")],
-    ["先の形",`手前${END_NAME[$("endA").value]}/奥${END_NAME[$("endB").value]}`]];
-  if($("clip").value!==DEF.clip) L.push(["押し込み口の溝","+"+fmt($("clip").value)+"mm"]);
+  const en=k=>t({clip:"eClip",neck:"eNeck",flat:"eFlat"}[k]);
+  const L=[[t("kD"),fmt($("D").value)+"mm"],[t("kTh"),$("theta").value+"°"],[t("kLen"),fmt($("len").value)+"mm"],
+    [t("kGap"),t("vGap")(fmt($("gapA").value),fmt($("gapB").value),$("gapMode").value==="linear")],
+    [t("kEnd"),t("vEnd")(en($("endA").value),en($("endB").value))]];
+  if([$("endA").value,$("endB").value].includes("clip")) L.push([t("kClip"),"Ø"+fmt($("clipD").value)+"mm"]);
   return L;
 }
 function renderSummary(){
   const L=settingsLines();
-  $("summary").innerHTML="<b>設定値</b><br>"+L.map(([k,v])=>`${k}=${v}`).join("<br>")+`<button id="copyBtn">コピー</button>`;
+  $("summary").innerHTML=`<b>${t("sumTitle")}</b><br>`+L.map(([k,v])=>`${k}=${v}`).join("<br>")+`<button id="copyBtn">${t("copy")}</button>`;
   $("copyBtn").onclick=()=>navigator.clipboard.writeText(L.map(([k,v])=>`${k}=${v}`).join(" / "))
-    .then(()=>{$("copyBtn").textContent="コピーしました";setTimeout(()=>$("copyBtn").textContent="コピー",1200);});
+    .then(()=>{$("copyBtn").textContent=t("copied");setTimeout(()=>$("copyBtn").textContent=t("copy"),1200);});
 }
 
 // ---- 3D プレビュー ----
@@ -514,7 +599,7 @@ function showMeshes(){
     new THREE.MeshStandardMaterial({color:0xff9a3c,transparent:true,opacity:.35,depthWrite:false})));
   const bb=result.part.boundingBox(), c=bb.min.map((v,i)=>(v+bb.max[i])/2), size=Math.max(...bb.max.map((v,i)=>v-bb.min[i]));
   const cp=result.center;
-  for(const [txt,p] of [["手前",cp[0]],["奥",cp[cp.length-1]]]) group.add(label(txt,p,pl.P.T_TOTAL+6,size));
+  for(const [txt,p] of [[t("near"),cp[0]],[t("far"),cp[cp.length-1]]]) group.add(label(txt,p,pl.P.T_TOTAL+6,size));
   group.position.set(-c[0],-c[1],-c[2]);
   scene.add(group);
   if(Math.abs(size-lastSize)>size*0.25){   // 大きさが大きく変わったときだけ視点を合わせ直す
@@ -540,7 +625,7 @@ $("dlstl").addEventListener("click",()=>{
   if(!result) return;
   const a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob([toSTL(result.part.getMesh())],{type:"model/stl"}));
-  a.download=`蛇腹サポーター_ホース${fmt($("D").value)}_長さ${fmt(pl.fit.lay.Ls,1)}_${$("theta").value}度.stl`;
+  a.download=`${t("file")}_${t("fHose")}${fmt($("D").value)}_${t("fLen")}${fmt(pl.fit.lay.Ls,1)}_${$("theta").value}${t("fDeg")}.stl`;
   a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),5000);
 });
 
@@ -548,32 +633,36 @@ $("dlstl").addEventListener("click",()=>{
 let timer=null;
 function update(){
   syncLabels();
-  $("status").textContent="生成中…";
+  $("status").textContent=t("gen");
   clearTimeout(timer);
   timer=setTimeout(()=>{
     try{
       if(result){result.part.delete(); result=null;}   // WASM 側のメモリを解放
       pl=range?plan(readU()):null;
       if(pl&&pl.ok){ result=buildPart(wasm,pl); showMeshes();
-        $("status").textContent=`${result.part.numTri().toLocaleString()} 三角形`; }
+        $("status").textContent=t("tri")(result.part.numTri().toLocaleString()); }
       else $("status").textContent="";
-    }catch(e){ $("status").textContent="エラー: "+e.message; console.error(e); }
+    }catch(e){ $("status").textContent=t("err")+e.message; console.error(e); }
     $("dlstl").disabled=!result;
     renderInfo(); renderSummary();
   },250);
 }
 function onRangeInputs(){ refreshRange(); update(); }
-for(const id of ["D","theta","gapA","gapB","gapMode","endA","endB","clip"]) $(id).addEventListener("input",onRangeInputs);
+// ホース径を変えたら押し込み口の溝径も同じだけ動かす（太さの差を保つ）
+let lastD=+$("D").value;
+$("D").addEventListener("input",()=>{const d=+$("D").value; clipVal=Math.round((clipVal+d-lastD)*10)/10; lastD=d;});
+$("clipD").addEventListener("input",()=>{clipVal=+$("clipD").value;});
+for(const id of ["D","theta","gapA","gapB","gapMode","endA","endB","clipD"]) $(id).addEventListener("input",onRangeInputs);
 $("len").addEventListener("input",update);
 $("gapPreset").addEventListener("input",()=>{const v=$("gapPreset").value; if(!v) return;
   const [a,b]=v.split(","); $("gapA").value=a; $("gapB").value=b; onRangeInputs();});
-for(const [n,id] of [["Dn","D"],["thetan","theta"],["lenn","len"]])
+for(const [n,id] of [["Dn","D"],["thetan","theta"],["lenn","len"],["clipDn","clipD"]])
   $(n).addEventListener("change",()=>{const t=$(id); t.value=clamp(+$(n).value,+t.min,+t.max); t.dispatchEvent(new Event("input"));});
 document.querySelectorAll(".mb").forEach(b=>b.addEventListener("click",()=>{
   const inp=$(b.dataset.t); b.dataset.d==="1"?inp.stepUp():inp.stepDown(); inp.dispatchEvent(new Event("input"));
 }));
 
-initGL(); refreshRange(); update();
+applyLang(); initGL(); refreshRange(); update();
 window._plan=plan; window._getResult=()=>result; window._lenRange=lenRange;
 </script>
 </body>
