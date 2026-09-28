@@ -66,7 +66,12 @@
   <div class="grp"><b>スティックの配り方</b>
     <div class="row" id="row_N"><label>本数</label><input type="range" id="N" min="3" max="12" step="1"><span class="v" id="N_v"></span></div>
     <div class="row"><label id="tiltLabel">傾き</label><input type="range" id="TILT" min="0" max="30" step="0.1"><span class="v" id="TILT_v"></span></div>
-    <div class="row" title="スティックどうしが一番近づく（上から見て交わる）高さ。差し込み部の下端から測る"><label>交点の高さ</label><input type="range" id="ZW" min="-10" max="80" step="0.5"><span class="v" id="ZW_v"></span></div>
+    <div class="btns" id="row_PIVOT" title="傾きを変えるとき、どこを動かさないか">
+      <span style="font-size:12px;align-self:center">傾けるときの支点:</span>
+      <button data-pivot="waist">交点</button>
+      <button data-pivot="bottom">下端（底の位置を保つ）</button>
+    </div>
+    <div class="row" title="スティックどうしが一番近づく（上から見て交わる）高さ。差し込み部の下端から測る"><label>交点の高さ</label><input type="range" id="ZW" min="-10" max="200" step="0.5"><span class="v" id="ZW_v"></span></div>
     <div class="row" id="row_TWIST"><label>ねじり</label><input type="range" id="TWIST" min="0" max="90" step="5"><span class="v" id="TWIST_v"></span></div>
     <div class="btns" id="row_ORDER">
       <button data-order="center">開き優先</button>
@@ -129,7 +134,8 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 // ORDER=扇の前後の並び: center=傾きの大きいものを中央寄りの面に（開き優先）/ lr・rl=左右の順に一列
 // ZW5/ZWF/ZW10=モードごとの交点（喉・扇の要）の高さ。差し込み部の下端から。既定は各3Dモデルと同じ。
 // TIPF=「瓶の中で最大に開く」で先端の広がりを抑える上限（瓶の外径比。1.10＝外径から一回り）。
-const DEF = {MODE:'ring', ORDER:'center', ZW5:0, ZWF:4.7, ZW10:7.9, TIPF:1.10, N:5, TILT:12, FAN:40, TOUT:10, TWIST:90, THROAT:3.8, PITCH:3.3,
+// PIVOT=傾きスライダーの支点: waist=交点を固定（下端が動く）/ bottom=瓶の底での広がりを保つ（交点の高さを動かす）
+const DEF = {MODE:'ring', ORDER:'center', PIVOT:'waist', ZW5:0, ZWF:4.7, ZW10:7.9, TIPF:1.10, N:5, TILT:12, FAN:40, TOUT:10, TWIST:90, THROAT:3.8, PITCH:3.3,
              SD:3.0, SL:250, BD:70.5, DEPTH:62, MD:16.8, PL:15};
 const KEYS = ['N','TILT','ZW','TWIST','PITCH','THROAT','SD','SL','BD','DEPTH','MD','PL','TIPF'];
 const TILT_KEY = {ring:'TILT', fan:'FAN', room:'TOUT'};
@@ -364,6 +370,32 @@ function maximizeInside(goal){
   return best;
 }
 
+// 支点=下端: 傾きを変えたあと、瓶の底での広がりが元と同じになる交点の高さを探す。
+// 10本版は交点を口から遠ざけると断面が縮むので、底の広がりは交点の高さに対して単調ではない。
+// そこで元の交点の高さから上下に少しずつ広げて、一番近い「元と同じ広がり」になる所を二分探索する。
+// 見つからなければ、調べた中で一番近い広がりの高さで止める。
+function holdBottom(target){
+  const zk = zwKey(), z0 = P[zk], zmin = zBottom() + 0.1, zmax = 200, step = 0.5;
+  const f = z => { P[zk] = z; return analyze().inside - target; };
+  let bestZ = z0, bestErr = Math.abs(f(z0)), bracket = null;
+  for (let k = 1; !bracket && (z0 - k*step >= zmin || z0 + k*step <= zmax); k++){
+    for (const dir of [1, -1]){
+      const a = z0 + dir*(k - 1)*step, b = z0 + dir*k*step;
+      if (b < zmin || b > zmax) continue;
+      const fa = f(a), fb = f(b);
+      if (Math.abs(fb) < bestErr){ bestErr = Math.abs(fb); bestZ = b; }
+      if (fa === 0 || fa*fb < 0){ bracket = [a, b, fa]; break; }
+    }
+  }
+  if (!bracket){ P[zk] = bestZ; return; }
+  let [a, b, fa] = bracket;
+  for (let k = 0; k < 25; k++){
+    const m = (a + b)/2, fm = f(m);
+    if (fa*fm <= 0) b = m; else { a = m; fa = fm; }
+  }
+  P[zk] = (a + b)/2;
+}
+
 function render(){
   clear(root);
   const A = analyze();
@@ -425,6 +457,7 @@ function syncUI(){
   $('row_THROAT').classList.toggle('off', !ring);
   $('row_PITCH').classList.toggle('off', P.MODE !== 'fan');
   $('row_ORDER').style.display = P.MODE === 'fan' ? '' : 'none';
+  for (const b of document.querySelectorAll('[data-pivot]')) b.classList.toggle('on', b.dataset.pivot === P.PIVOT);
   for (const b of document.querySelectorAll('[data-order]')) b.classList.toggle('on', b.dataset.order === P.ORDER);
   $('tiltLabel').textContent = {ring:'傾き', fan:'開き角（両端）', room:'外側の傾き'}[P.MODE];
   $('N_v').textContent = nSticks() + '本';
@@ -433,11 +466,15 @@ function syncUI(){
 }
 for (const k of KEYS){
   $(k).addEventListener('input', () => {
+    const keepBottom = k === 'TILT' && P.PIVOT === 'bottom' ? analyze().inside : null;
     P[realKey(k)] = +$(k).value;
+    if (keepBottom !== null) holdBottom(keepBottom);
     if (k === 'MD') P.THROAT = Math.min(P.THROAT, P.MD/2);
     syncUI(); render(); save();
   });
 }
+for (const b of document.querySelectorAll('[data-pivot]'))
+  b.onclick = () => { P.PIVOT = b.dataset.pivot; syncUI(); save(); };
 for (const b of document.querySelectorAll('[data-mode]'))
   b.onclick = () => {
     P.MODE = b.dataset.mode; syncUI(); render(); save();
@@ -462,7 +499,7 @@ function runMaximize(goal){
   }, 30);
 }
 $('maxInside').onclick = () => runMaximize('inside');
-$('toCorner').onclick = () => runMaximize('corner');
+$('toCorner').onclick = () => { P.PIVOT = 'bottom'; runMaximize('corner'); };   // 隅に届いた下端を保ったまま傾きを変えられるように
 $('fanMax').onclick = () => { const v = fanLimit(); if (v !== null){ P.FAN = v; syncUI(); render(); save(); } };
 for (const b of document.querySelectorAll('[data-view]')) b.onclick = () => setView(b.dataset.view);
 $('reset').onclick = () => { Object.assign(P, DEF); syncUI(); render(); setView('iso'); save(); };
@@ -473,6 +510,7 @@ try{
   const m = {5:'ring', 10:'room'}[s.MODE] ?? s.MODE;   // 以前は数値で保存していた
   if (m in TILT_KEY) P.MODE = m;
   if (s.ORDER in FAN_SLOT) P.ORDER = s.ORDER;
+  if (s.PIVOT === 'waist' || s.PIVOT === 'bottom') P.PIVOT = s.PIVOT;
 }catch(e){}
 
 function resize(){
