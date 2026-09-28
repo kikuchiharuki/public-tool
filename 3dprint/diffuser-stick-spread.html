@@ -65,7 +65,7 @@
 
   <div class="grp"><b>スティックの配り方</b>
     <div class="row" id="row_N"><label>本数</label><input type="range" id="N" min="3" max="12" step="1"><span class="v" id="N_v"></span></div>
-    <div class="row"><label id="tiltLabel">傾き</label><input type="range" id="TILT" min="0" max="30" step="0.5"><span class="v" id="TILT_v"></span></div>
+    <div class="row"><label id="tiltLabel">傾き</label><input type="range" id="TILT" min="0" max="30" step="0.1"><span class="v" id="TILT_v"></span></div>
     <div class="row" title="スティックどうしが一番近づく（上から見て交わる）高さ。差し込み部の下端から測る"><label>交点の高さ</label><input type="range" id="ZW" min="-10" max="80" step="0.5"><span class="v" id="ZW_v"></span></div>
     <div class="row" id="row_TWIST"><label>ねじり</label><input type="range" id="TWIST" min="0" max="90" step="5"><span class="v" id="TWIST_v"></span></div>
     <div class="btns" id="row_ORDER">
@@ -92,8 +92,8 @@
 
   <div class="grp"><b>瓶の中で最大に開く</b>
     <div class="row"><label>先端の上限</label><input type="range" id="TIPF" min="0.8" max="1.5" step="0.05"><span class="v" id="TIPF_v"></span></div>
-    <div class="btns"><button id="maxInside">瓶の中で最大に開く</button></div>
-    <div class="note" id="maxNote">先端の広がりを「瓶の外径×上限」以内に抑えたまま、瓶の底での広がりが最大になる傾きと交点の高さを探す。</div>
+    <div class="btns"><button id="maxInside">瓶の中で最大に開く</button><button id="toCorner">隅まで届かせる</button></div>
+    <div class="note" id="maxNote">「最大に開く」: 先端の広がりを「瓶の外径×上限」以内に抑えたまま、瓶の底での広がりを最大にする。「隅まで届かせる」: 普段の使い方のように全部のスティックを瓶の底の隅まで届かせる（先端の上限は見ない）。そこから手で調整できる。</div>
   </div>
 
   <div class="grp"><b>結果</b>
@@ -134,6 +134,7 @@ const DEF = {MODE:'ring', ORDER:'center', ZW5:0, ZWF:4.7, ZW10:7.9, TIPF:1.10, N
 const KEYS = ['N','TILT','ZW','TWIST','PITCH','THROAT','SD','SL','BD','DEPTH','MD','PL','TIPF'];
 const TILT_KEY = {ring:'TILT', fan:'FAN', room:'TOUT'};
 const tiltKey = () => TILT_KEY[P.MODE];
+const TILT_MAX = {ring:45, fan:90, room:45};      // 隅まで届かせると30°前後になるので余裕を持たせる
 const zwKey = () => ({ring:'ZW5', fan:'ZWF', room:'ZW10'})[P.MODE];
 const realKey = k => k === 'TILT' ? tiltKey() : k === 'ZW' ? zwKey() : k;   // モード別の値を持つスライダー
 const P = {...DEF};
@@ -303,32 +304,40 @@ const isBad = A => A.gap < 0 || A.wall < 0 || A.bore < -TOUCH;
 // 扇: いまの並び・間隔で干渉しない開き角の上限（二分探索）
 function fanLimit(){
   const keep = P.FAN;
-  let lo = 0, hi = 60;
+  let lo = 0, hi = TILT_MAX.fan;
   P.FAN = lo; if (isBad(analyze())) { P.FAN = keep; return null; }
   for (let k = 0; k < 18; k++){ P.FAN = (lo + hi)/2; if (isBad(analyze())) hi = P.FAN; else lo = P.FAN; }
   P.FAN = keep;
-  return Math.floor(lo*2)/2;                       // スライダーの刻み0.5°に切り下げ
+  return Math.floor(lo*10)/10;                     // スライダーの刻み0.1°に切り下げ
 }
 
 // 瓶の中で最大に開く（最優先）: 瓶の底での広がりを最大にする。守るのは干渉なしと
 // 先端の広がり ≤ 瓶の外径×TIPF だけで、配り方の値（傾き・交点の高さ・ねじり・穴の半径・扇の並びと間隔）は変えてよい。
 // 配り方の組ごとに、交点の高さを振り、各高さで先端上限に収まる最大の傾きを二分探索する
 // （傾きを上げるほど底も先端も広がるので、傾きは上限が最良）。
-function searchZT(){
+// goal='inside': 先端上限内で底の広がりを最大に / goal='corner': 底の隅（内壁）まで届かせ、その中で先端の広がりが最小
+const CORNER_TOUCH = 1.0;                          // 内壁とのすき間がこれ以下なら「隅に届いた」とみなす
+function searchZT(goal){
   const tk = tiltKey(), zk = zwKey();
-  const tmax = P.MODE === 'fan' ? 60 : 30;
-  const fits = () => { const A = analyze(); return !isBad(A) && A.spread <= P.TIPF*P.BD + 1e-6 ? A : null; };
+  const tmax = TILT_MAX[P.MODE];
+  const fits = () => {
+    const A = analyze();
+    return !isBad(A) && (goal === 'corner' || A.spread <= P.TIPF*P.BD + 1e-6) ? A : null;
+  };
+  // 大きいほど良い。隅: 届いた組を優先し、その中で先端が狭いもの
+  const score = A => goal === 'inside' ? A.inside
+    : A.wall <= CORNER_TOUCH ? 1e6 - A.spread : A.inside;
   const maxTilt = () => {
     P[tk] = 0; if (!fits()) return null;
     let lo = 0, hi = tmax;
-    for (let k = 0; k < 14; k++){ P[tk] = (lo + hi)/2; if (fits()) lo = P[tk]; else hi = P[tk]; }
-    return Math.floor(lo*2)/2;                     // スライダーの刻み0.5°に切り下げ
+    for (let k = 0; k < 16; k++){ P[tk] = (lo + hi)/2; if (fits()) lo = P[tk]; else hi = P[tk]; }
+    return Math.floor(lo*10)/10;                   // スライダーの刻み0.1°に切り下げ
   };
   let best = null;
   const tryZ = z => {
-    P[zk] = z; const t = maxTilt(); if (t === null) return;
+    P[zk] = z; const t = maxTilt(); if (t === null) return;   // 傾きを上げるほど底が広がるので、傾きは上限が最良
     P[tk] = t; const A = fits();
-    if (A && (!best || A.inside > best.inside)) best = {z, t, inside: A.inside};
+    if (A && (!best || score(A) > best.score)) best = {z, t, inside: A.inside, spread: A.spread, wall: A.wall, score: score(A)};
   };
   for (let z = -10; z <= 80; z += 4) tryZ(z);
   if (best) for (let z = best.z - 4; z <= best.z + 4; z += 0.5) tryZ(z);
@@ -336,7 +345,7 @@ function searchZT(){
 }
 const grid = (lo, hi, step) => Array.from({length: Math.floor((hi - lo)/step + 1e-9) + 1}, (_, k) => +(lo + k*step).toFixed(2));
 const combos = o => Object.entries(o).reduce((acc, [k, vs]) => acc.flatMap(a => vs.map(v => ({...a, [k]: v}))), [{}]);
-function maximizeInside(){
+function maximizeInside(goal){
   const variants = {
     ring: combos({TWIST: [0, 30, 60, 90], THROAT: grid(0, P.MD/2, 0.5)}),
     fan:  combos({ORDER: ['center', 'lr', 'rl'], PITCH: [0.3, 0.6, 1, 1.5].map(g => +(P.SD + g).toFixed(1))}),
@@ -346,8 +355,8 @@ function maximizeInside(){
   let best = null;
   for (const v of variants){
     Object.assign(P, v);
-    const b = searchZT();
-    if (b && (!best || b.inside > best.inside)) best = {...b, v};
+    const b = searchZT(goal);
+    if (b && (!best || b.score > best.score)) best = {...b, v};
   }
   Object.assign(P, snap);
   if (!best) return null;
@@ -403,7 +412,7 @@ const MODE_NOTE = {
   room: '10本を仕切り壁の部屋に通し、断面ごと回しながら開くので互いに交わらない。外壁は作らず、瓶の口が壁の役をする（スティックは口に接触してよい）。',
 };
 function syncUI(){
-  $('TILT').max = P.MODE === 'fan' ? 60 : 30;     // 値を入れる前に範囲を合わせる
+  $('TILT').max = TILT_MAX[P.MODE];               // 値を入れる前に範囲を合わせる
   for (const k of KEYS){
     const v = P[realKey(k)];
     $(k).value = v;
@@ -436,20 +445,24 @@ for (const b of document.querySelectorAll('[data-mode]'))
   };
 for (const b of document.querySelectorAll('[data-order]'))
   b.onclick = () => { P.ORDER = b.dataset.order; syncUI(); render(); save(); };
-$('maxInside').onclick = () => {
+function runMaximize(goal){
   $('maxNote').textContent = '計算中…';
   setTimeout(() => {                                // 「計算中」を描いてから重い探索に入る
-    const b = maximizeInside();
+    const b = maximizeInside(goal);
     const ORDER_NAME = {center:'開き優先', lr:'一列（左が手前）', rl:'一列（右が手前）'};
-    const changed = b ? Object.entries(b.v).map(([k, v]) =>
-      ({TWIST:`ねじり${v}°`, THROAT:`穴の半径${v}mm`, ORDER:`並び ${ORDER_NAME[v]}`, PITCH:`前後の間隔${v}mm`})[k]) : [];
-    $('maxNote').textContent = b
-      ? `先端 ${(P.TIPF*P.BD).toFixed(0)}mm 以内で、瓶の底での広がり ${b.inside.toFixed(1)}mm。`
-        + `（傾き ${b.t}°・交点の高さ ${b.z.toFixed(1)}mm${changed.length ? '・' + changed.join('・') : ''}）`
-      : '条件を満たす開き方が見つからない（先端の上限を上げるか、スティック径・本数を見直す）。';
+    const changed = b ? [`傾き ${b.t}°`, `交点の高さ ${b.z.toFixed(1)}mm`, ...Object.entries(b.v).map(([k, v]) =>
+      ({TWIST:`ねじり${v}°`, THROAT:`穴の半径${v}mm`, ORDER:`並び ${ORDER_NAME[v]}`, PITCH:`前後の間隔${v}mm`})[k])] : [];
+    $('maxNote').textContent = !b ? '条件を満たす開き方が見つからない（先端の上限を上げるか、スティック径・本数を見直す）。'
+      : goal === 'inside'
+        ? `先端 ${(P.TIPF*P.BD).toFixed(0)}mm 以内で、瓶の底での広がり ${b.inside.toFixed(1)}mm。（${changed.join('・')}）`
+        : b.wall <= CORNER_TOUCH
+          ? `隅まで届いた: 瓶の底での広がり ${b.inside.toFixed(1)}mm、先端 ${b.spread.toFixed(0)}mm。（${changed.join('・')}）`
+          : `口の穴や他のスティックに当たって隅まで届かない。一番広い底 ${b.inside.toFixed(1)}mm。（${changed.join('・')}）`;
     syncUI(); render(); save();
   }, 30);
-};
+}
+$('maxInside').onclick = () => runMaximize('inside');
+$('toCorner').onclick = () => runMaximize('corner');
 $('fanMax').onclick = () => { const v = fanLimit(); if (v !== null){ P.FAN = v; syncUI(); render(); save(); } };
 for (const b of document.querySelectorAll('[data-view]')) b.onclick = () => setView(b.dataset.view);
 $('reset').onclick = () => { Object.assign(P, DEF); syncUI(); render(); setView('iso'); save(); };
