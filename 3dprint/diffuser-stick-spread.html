@@ -56,8 +56,9 @@
 
   <div class="grp"><b>モデル</b>
     <div class="btns">
-      <button data-mode="10">10本・部屋仕切り（外壁なし）</button>
-      <button data-mode="5">5本・丸穴</button>
+      <button data-mode="ring">5本・丸穴</button>
+      <button data-mode="fan">5本・扇（正面から扇状）</button>
+      <button data-mode="room">10本・部屋仕切り（外壁なし）</button>
     </div>
     <div class="note" id="modeNote"></div>
   </div>
@@ -66,6 +67,7 @@
     <div class="row" id="row_N"><label>本数</label><input type="range" id="N" min="3" max="12" step="1"><span class="v" id="N_v"></span></div>
     <div class="row"><label id="tiltLabel">傾き</label><input type="range" id="TILT" min="0" max="30" step="0.5"><span class="v" id="TILT_v"></span></div>
     <div class="row" id="row_TWIST"><label>ねじり</label><input type="range" id="TWIST" min="0" max="90" step="5"><span class="v" id="TWIST_v"></span></div>
+    <div class="row" id="row_PITCH"><label>前後の間隔</label><input type="range" id="PITCH" min="1.5" max="6" step="0.1"><span class="v" id="PITCH_v"></span></div>
     <div class="row" id="row_THROAT"><label>穴の半径</label><input type="range" id="THROAT" min="0" max="7" step="0.1"><span class="v" id="THROAT_v"></span></div>
     <div class="row"><label>スティック径</label><input type="range" id="SD" min="1.5" max="5" step="0.1"><span class="v" id="SD_v"></span></div>
     <div class="row"><label>長さ</label><input type="range" id="SL" min="120" max="350" step="5"><span class="v" id="SL_v"></span></div>
@@ -108,11 +110,14 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 // 座標: z=0 が差し込み部の下端、z=PL が瓶の口の上端。瓶の中は z<PL。
 // 既定値は設計値/実測値（diffuser_stick_support.py・bottle_dummy.py）:
 //   口の穴16.8 / 差し込み長15 / 中の深さ62 / スティックφ3.0・長さ250 / 胴の外径70.5
-// TILT=5本版の傾き(12°)、TOUT=10本版の一番外側の傾き(10°)。傾きスライダーはモードごとに別の値を持つ。
-const DEF = {MODE:5, N:5, TILT:12, TOUT:10, TWIST:90, THROAT:3.8, SD:3.0, SL:250,
-             BD:70.5, DEPTH:62, MD:16.8, PL:15};
-const KEYS = ['N','TILT','TWIST','THROAT','SD','SL','BD','DEPTH','MD','PL'];
-const tiltKey = () => P.MODE === 10 ? 'TOUT' : 'TILT';
+// モード: ring=5本・丸穴 / fan=5本・扇 / room=10本・部屋仕切り
+// 傾きスライダーはモードごとに別の値を持つ: TILT=丸穴の傾き(12°)、FAN=扇の両端の開き角(40°)、
+// TOUT=10本版の一番外側の傾き(10°)。PITCH=扇で前後にずらす面の間隔（スティック径＋0.3）。
+const DEF = {MODE:'ring', N:5, TILT:12, FAN:40, TOUT:10, TWIST:90, THROAT:3.8, PITCH:3.3,
+             SD:3.0, SL:250, BD:70.5, DEPTH:62, MD:16.8, PL:15};
+const KEYS = ['N','TILT','TWIST','PITCH','THROAT','SD','SL','BD','DEPTH','MD','PL'];
+const TILT_KEY = {ring:'TILT', fan:'FAN', room:'TOUT'};
+const tiltKey = () => TILT_KEY[P.MODE];
 const P = {...DEF};
 // サポーターと瓶の固定寸法（実測・設計値）
 const FLANGE_W = 3.75, FLANGE_T = 0.8, PLUG_GAP = 0.2;   // ツバ張り出し/厚み・口とのすき間
@@ -171,8 +176,21 @@ function line10(i){
     d: new THREE.Vector3(-K*y0, K*x0, 1).normalize()
   };
 }
-const nSticks = () => P.MODE === 10 ? 10 : P.N;
-const stickLine = i => P.MODE === 10 ? line10(i) : line5(i);
+// 扇: 正面(XZ面)から見て5本が扇状に開く。1本ずつ前後(y)にずらした別々の面に置くので、
+// 正面から見て交差しても実際には当たらない（最接近＝前後の間隔）。
+// 傾きの大きいスティックほど中央寄りの面に置き、端の面でも瓶の口に収まるようにする。
+// 扇の要（正面から見て交わる高さ）は、口の穴の上下中央。
+const FAN_SLOT = [1, 2, -2, -1, 0];                // i本目(角度 -2θ,-θ,0,θ,2θ)を置く面(×PITCH)
+function lineFan(i){
+  const a = (i - 2) * P.FAN/4 * Math.PI/180;
+  const zc = P.PL - (NECK_H + INNER_WALL)/2;
+  return {
+    p: new THREE.Vector3(-zc*Math.tan(a), FAN_SLOT[i]*P.PITCH, 0),
+    d: new THREE.Vector3(Math.sin(a), 0, Math.cos(a))
+  };
+}
+const nSticks = () => P.MODE === 'room' ? 10 : P.MODE === 'fan' ? 5 : P.N;
+const stickLine = i => ({ring:line5, fan:lineFan, room:line10})[P.MODE](i);
 const at = (L, z) => L.p.clone().addScaledVector(L.d, z / L.d.z);   // 中心線上の高さzの点
 
 // 瓶の内側の半径（高さzで）。口の穴と胴の空洞が段でつながる（bottle_dummy.py と同じ）。
@@ -250,7 +268,10 @@ function analyze(){
       if (z >= zNeck) bore = Math.min(bore, g); else wall = Math.min(wall, g);
     }
   }
-  const spread = 2 * Math.max(...ends.map(e => Math.hypot(e.b.x, e.b.y) + r));
+  // 扇は正面から見た左右の幅、それ以外は上から見た外接円の直径
+  const xs = ends.map(e => e.b.x);
+  const spread = P.MODE === 'fan' ? Math.max(...xs) - Math.min(...xs) + P.SD
+    : 2 * Math.max(...ends.map(e => Math.hypot(e.b.x, e.b.y) + r));
   const tilts = lines.map(L => Math.acos(L.d.z) * 180/Math.PI);
   return {ends, gap, bore, wall, spread, reach: ends[0].b.z - P.PL,
           tmin: Math.min(...tilts), tmax: Math.max(...tilts)};
@@ -267,7 +288,7 @@ function render(){
   const f = (v, u='mm') => v.toFixed(1) + u;
   const judge = (v, t) => `<span class="${v < 0 ? 'ng' : 'ok'}">${t}</span>`;
   $('out').innerHTML = [
-    ['先端の広がり（直径）', f(A.spread)],
+    [P.MODE === 'fan' ? '先端の広がり（正面の幅）' : '先端の広がり（直径）', f(A.spread)],
     ['瓶の口から出る長さ', f(A.reach)],
     ['スティック同士のすき間', nSticks() > 1 ? judge(A.gap, f(A.gap)) : '—'],
     ['瓶の口とのすき間', A.bore < -TOUCH ? `<span class="ng">口より外（${f(A.bore)}）</span>`
@@ -291,28 +312,33 @@ function setView(kind){
 }
 
 // ── UI ────────────────────────────────────────────────────────────────
-const UNIT = {N:'本', TILT:'°', TWIST:'°', THROAT:'mm', SD:'mm', SL:'mm', BD:'mm', DEPTH:'mm', MD:'mm', PL:'mm'};
+const UNIT = {N:'本', TILT:'°', TWIST:'°', PITCH:'mm', THROAT:'mm', SD:'mm', SL:'mm', BD:'mm', DEPTH:'mm', MD:'mm', PL:'mm'};
 // 保存キーに版番号を付ける。既定値を実測値に入れ替えたとき、前に開いた人の古い保存値が
 // そのまま残って「既定値のはずが違う」状態になるのを避けるため。既定値を変えたら上げる。
 const KEY = 'diffuser-stick-spread.v4';
 const save = () => { try{ localStorage.setItem(KEY, JSON.stringify(P)); }catch(e){} };
 
+const MODE_NOTE = {
+  ring: '円周に並べた5つの丸穴。接線方向にねじって開く。',
+  fan:  '正面から見て扇状に開く5本。1本ずつ前後にずらした面に置くので、正面から重なって見えても当たらない。傾きの大きいスティックほど中央寄りの面に置く。',
+  room: '10本を仕切り壁の部屋に通し、断面ごと回しながら開くので互いに交わらない。外壁は作らず、瓶の口が壁の役をする（スティックは口に接触してよい）。',
+};
 function syncUI(){
+  $('TILT').max = P.MODE === 'fan' ? 60 : 30;     // 値を入れる前に範囲を合わせる
   for (const k of KEYS){
     const v = k === 'TILT' ? P[tiltKey()] : P[k];
     $(k).value = v;
     $(k+'_v').textContent = (k === 'N' ? v : (+v).toFixed(1)) + UNIT[k];
   }
-  const m10 = P.MODE === 10;
-  $('row_N').classList.toggle('off', m10);         // 10本版は配置固定
-  $('row_TWIST').classList.toggle('off', m10);
-  $('row_THROAT').classList.toggle('off', m10);
-  $('tiltLabel').textContent = m10 ? '外側の傾き' : '傾き';
-  $('N_v').textContent = m10 ? '10本' : P.N + '本';
-  $('modeNote').textContent = m10
-    ? '10本を仕切り壁の部屋に通し、断面ごと回しながら開くので互いに交わらない。外壁は作らず、瓶の口が壁の役をする（スティックは口に接触してよい）。'
-    : '円周に並べた5つの丸穴。接線方向にねじって開く。';
-  for (const b of document.querySelectorAll('[data-mode]')) b.classList.toggle('on', +b.dataset.mode === P.MODE);
+  const ring = P.MODE === 'ring';
+  $('row_N').classList.toggle('off', !ring);       // 扇・10本版は本数固定
+  $('row_TWIST').classList.toggle('off', !ring);
+  $('row_THROAT').classList.toggle('off', !ring);
+  $('row_PITCH').classList.toggle('off', P.MODE !== 'fan');
+  $('tiltLabel').textContent = {ring:'傾き', fan:'開き角（両端）', room:'外側の傾き'}[P.MODE];
+  $('N_v').textContent = nSticks() + '本';
+  $('modeNote').textContent = MODE_NOTE[P.MODE];
+  for (const b of document.querySelectorAll('[data-mode]')) b.classList.toggle('on', b.dataset.mode === P.MODE);
 }
 for (const k of KEYS){
   $(k).addEventListener('input', () => {
@@ -322,13 +348,18 @@ for (const k of KEYS){
   });
 }
 for (const b of document.querySelectorAll('[data-mode]'))
-  b.onclick = () => { P.MODE = +b.dataset.mode; syncUI(); render(); save(); };
+  b.onclick = () => {
+    P.MODE = b.dataset.mode; syncUI(); render(); save();
+    if (P.MODE === 'fan') setView('front');       // 扇は正面から見る形なので正面に向ける
+  };
 for (const b of document.querySelectorAll('[data-view]')) b.onclick = () => setView(b.dataset.view);
 $('reset').onclick = () => { Object.assign(P, DEF); syncUI(); render(); setView('iso'); save(); };
 
 try{
   const s = JSON.parse(localStorage.getItem(KEY) || '{}');
-  for (const k of [...KEYS,'MODE','TOUT']) if (typeof s[k] === 'number') P[k] = s[k];
+  for (const k of [...KEYS,'FAN','TOUT']) if (typeof s[k] === 'number') P[k] = s[k];
+  const m = {5:'ring', 10:'room'}[s.MODE] ?? s.MODE;   // 以前は数値で保存していた
+  if (m in TILT_KEY) P.MODE = m;
 }catch(e){}
 
 function resize(){
@@ -336,7 +367,7 @@ function resize(){
   cam.aspect = innerWidth/innerHeight; cam.updateProjectionMatrix();
 }
 addEventListener('resize', resize);
-resize(); syncUI(); render(); setView('iso');
+resize(); syncUI(); render(); setView(P.MODE === 'fan' ? 'front' : 'iso');
 (function loop(){ requestAnimationFrame(loop); ctl.update(); renderer.render(scene, cam); })();
 </script>
 </body>
