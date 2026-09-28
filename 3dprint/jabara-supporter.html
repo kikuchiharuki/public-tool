@@ -59,7 +59,7 @@
 
   <div class="step"><span class="n">2</span><span data-i="s2"></span></div>
   <label><span data-i="thLabel"></span> <span class="val" id="thetaV"></span></label>
-  <div class="srow"><button class="mb" data-t="theta" data-d="-1">−</button><input type="range" id="theta" min="30" max="360" step="1" value="100"><button class="mb" data-t="theta" data-d="1">＋</button><input type="number" id="thetan" min="30" max="360" step="1"></div>
+  <div class="srow"><button class="mb" data-t="theta" data-d="-1">−</button><input type="range" id="theta" min="0" max="360" step="1" value="100"><button class="mb" data-t="theta" data-d="1">＋</button><input type="number" id="thetan" min="0" max="360" step="1"></div>
 
   <div class="step"><span class="n">3</span><span data-i="s3"></span></div>
   <label><span data-i="lenLabel"></span> <span class="val" id="lenV"></span></label>
@@ -206,6 +206,7 @@ function fitSpring(P,Ls){
 // 曲げ写像。Rc=中心線の平均半径。k>0 で渦巻き（φとともに半径が k·φ 増える）
 function bendMap(P,L,thetaDeg,Rc,k){
   const s=BEND_SIDE, th=thetaDeg*Math.PI/180, cx=P.cx;
+  if(!(th>0)) return {f:(x,y)=>[x,y],R0:Infinity,Rt:Infinity,th:0,k:0};   // 0°＝曲げない（直線）
   const R0=Rc-k*th/2, ys=P.L_END_A, ye=L-P.L_END_B, Ox=cx+s*R0, Oy=ys;
   const phiOf=u=>k>1e-9?(-R0+Math.sqrt(R0*R0+2*k*u))/k:u/R0;
   const Rt=R0+k*th;
@@ -224,7 +225,7 @@ function checkShape(P,lay,thetaDeg,Rc,k){
   const mp=bendMap(P,lay.L,thetaDeg,Rc,k), W=P.W_TOTAL, cx=P.cx, s=BEND_SIDE;
   const xin=s>0?W:0, xout=s>0?0:W, R0=mp.R0;
   if(R0-W/2<1) return {ok:false,why:"内側の半径が小さすぎる",mp};
-  const fac=x=>(R0+s*(cx-x))/R0;
+  const fac=x=>isFinite(R0)?(R0+s*(cx-x))/R0:1;
   let minGap=1e9;
   for(const g of lay.gaps) for(const x of [xin,cx,xout]){
     const gf=(g.hi[0]+(x-cx)*g.hi[1])-(g.lo[0]+(x-cx)*g.lo[1]);
@@ -247,7 +248,7 @@ function checkShape(P,lay,thetaDeg,Rc,k){
 
 // リブ枚数を決めた後の形の判定（弧の半径＝蛇腹の長さ／角度）
 function planFit(P,fit,theta){
-  const th=theta*Math.PI/180, Rc=fit.lay.Ls/th;
+  const th=theta*Math.PI/180, Rc=th>0?fit.lay.Ls/th:Infinity;
   let chk=checkShape(P,fit.lay,theta,Rc,0), k=0;
   // 180°を超えて端がぶつかるときは渦巻きにする（外周へずらす量を少しずつ増やして最小を探す）
   if(!chk.ok && chk.why==="両端が本体にぶつかる" && theta>180){
@@ -421,7 +422,7 @@ function buildPartInner(wasm,pl){
 const I18N={
 ja:{title:"蛇腹サポーター STL生成",
  sub:"ホースや紐を好きな円弧に沿わせて保持する板バネ。値を決めるとSTLができます。平らな面を下にして、サポートなしで印刷します。",
- s1:"ホース・紐の直径",dLabel:"直径",s2:"弧の角度",thLabel:"角度（360°で一周）",
+ s1:"ホース・紐の直径",dLabel:"直径",s2:"弧の角度",thLabel:"角度（0°で直線・360°で一周）",
  s3:"蛇腹の長さ",lenLabel:"ホースに沿った長さ（両端ブロックを除く）",
  s4:"蛇腹の間隔",pCustom:"（下のスライダーで個別に）",pBig:"全体を大きく",pSmall:"全体を小さく",pBigSmall:"手前が大きく、奥が小さく",pSmallBig:"手前が小さく、奥が大きく",
  gapALabel:"手前側の間隔",gapBLabel:"奥側の間隔",modeLabel:"手前→奥の変わり方",mHalf:"半分のところで切り替える",mLinear:"なだらかに変える",
@@ -433,7 +434,7 @@ ja:{title:"蛇腹サポーター STL生成",
  gapV:(mm,deg)=>`すきま ${mm} mm（開き ${deg}°）`,
  noShape:"作れる形がありません",ng:w=>`この組み合わせは不可: ${w}`,
  iRibs:(n,l,L)=>`リブ <b>${n}枚</b>・実際の蛇腹の長さ <b>${l} mm</b>・全長 ${L} mm`,
- iDia:d=>`弧の直径（ホース中心） <b>${d} mm</b>`,
+ iDia:d=>d==="∞"?"曲げなし（<b>直線</b>）":`弧の直径（ホース中心） <b>${d} mm</b>`,
  iSec:(w,h,t)=>`断面 <b>幅${w} × 厚み${h} mm</b>・リブ厚 ${t}`,
  iGroove:(d,m)=>`溝 Ø${d}（溝口 ${m}）`,iClip:(d,m)=>`／押し込み口 Ø${d}（溝口 ${m}）`,
  iBend:(r,g)=>`曲げ後の内側リブ ${r} mm・関節すきま最小 ${g} mm`,
@@ -448,7 +449,7 @@ ja:{title:"蛇腹サポーター STL生成",
  why:w=>w},
 en:{title:"Bellows Hose Support — STL Generator",
  sub:"A flexible spring clip that holds a hose or cord along an arc of your choice. Set the values to get an STL. Print flat side down, no supports needed.",
- s1:"Hose / cord diameter",dLabel:"Diameter",s2:"Arc angle",thLabel:"Angle (360° = full loop)",
+ s1:"Hose / cord diameter",dLabel:"Diameter",s2:"Arc angle",thLabel:"Angle (0° = straight, 360° = full loop)",
  s3:"Bellows length",lenLabel:"Length along the hose (excluding end blocks)",
  s4:"Bellows spacing",pCustom:"(set with the sliders below)",pBig:"Wide throughout",pSmall:"Narrow throughout",pBigSmall:"Wide at start, narrow at end",pSmallBig:"Narrow at start, wide at end",
  gapALabel:"Spacing at start",gapBLabel:"Spacing at end",modeLabel:"Start → end transition",mHalf:"Switch at the midpoint",mLinear:"Gradual",
@@ -460,7 +461,7 @@ en:{title:"Bellows Hose Support — STL Generator",
  gapV:(mm,deg)=>`gap ${mm} mm (opening ${deg}°)`,
  noShape:"No valid shape",ng:w=>`Not possible: ${w}`,
  iRibs:(n,l,L)=>`<b>${n} ribs</b> · actual bellows length <b>${l} mm</b> · overall ${L} mm`,
- iDia:d=>`Arc diameter (hose centerline) <b>${d} mm</b>`,
+ iDia:d=>d==="∞"?"No bend (<b>straight</b>)":`Arc diameter (hose centerline) <b>${d} mm</b>`,
  iSec:(w,h,t)=>`Section <b>${w} W × ${h} H mm</b> · rib ${t}`,
  iGroove:(d,m)=>`Groove Ø${d} (opening ${m})`,iClip:(d,m)=>` / clip Ø${d} (opening ${m})`,
  iBend:(r,g)=>`After bending: inner rib ${r} mm · min joint gap ${g} mm`,
@@ -486,7 +487,8 @@ function applyLang(){
 }
 $("langBtn").addEventListener("click",()=>{
   lang=lang==="ja"?"en":"ja"; try{localStorage.setItem("jabaraLang",lang);}catch(_){}
-  applyLang(); refreshRange(); syncLabels(); renderInfo(); renderSummary(); if(result) showMeshes();
+  applyLang(); refreshRange(); syncLabels(); renderInfo(); renderSummary();
+  if(result){ showMeshes(); $("status").textContent=t("tri")(result.part.numTri().toLocaleString()); }
 });
 
 // ---- UI ----
@@ -533,7 +535,7 @@ function renderInfo(){
   if(!pl.ok){el.innerHTML=`<span class="ng">${t("ng")(t("why")(pl.why))}</span>`;return;}
   const P=pl.P, f=pl.fit, L=[];
   L.push(t("iRibs")(f.N,fmt(f.lay.Ls,1),fmt(f.lay.L,1)));
-  L.push(t("iDia")(fmt(2*pl.Rc,1)));
+  L.push(t("iDia")(isFinite(pl.Rc)?fmt(2*pl.Rc,1):"∞"));
   L.push(t("iSec")(fmt(P.W_TOTAL,2),fmt(P.T_TOTAL,2),fmt(P.T_RIB,2)));
   L.push(t("iGroove")(fmt(P.D_TUBE,2),fmt(P.MOUTH,2))+([P.endA,P.endB].includes("clip")?t("iClip")(fmt(P.D_CLIP,2),fmt(P.MOUTH_CLIP,2)):""));
   L.push(t("iBend")(fmt(pl.chk.ribIn,2),fmt(pl.chk.minGap,2)));
