@@ -67,6 +67,12 @@
     <div class="row" id="row_N"><label>本数</label><input type="range" id="N" min="3" max="12" step="1"><span class="v" id="N_v"></span></div>
     <div class="row"><label id="tiltLabel">傾き</label><input type="range" id="TILT" min="0" max="30" step="0.5"><span class="v" id="TILT_v"></span></div>
     <div class="row" id="row_TWIST"><label>ねじり</label><input type="range" id="TWIST" min="0" max="90" step="5"><span class="v" id="TWIST_v"></span></div>
+    <div class="btns" id="row_ORDER">
+      <button data-order="center">開き優先</button>
+      <button data-order="lr">一列（左が手前）</button>
+      <button data-order="rl">一列（右が手前）</button>
+      <button id="fanMax">上限まで開く</button>
+    </div>
     <div class="row" id="row_PITCH"><label>前後の間隔</label><input type="range" id="PITCH" min="1.5" max="6" step="0.1"><span class="v" id="PITCH_v"></span></div>
     <div class="row" id="row_THROAT"><label>穴の半径</label><input type="range" id="THROAT" min="0" max="7" step="0.1"><span class="v" id="THROAT_v"></span></div>
     <div class="row"><label>スティック径</label><input type="range" id="SD" min="1.5" max="5" step="0.1"><span class="v" id="SD_v"></span></div>
@@ -113,7 +119,8 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 // モード: ring=5本・丸穴 / fan=5本・扇 / room=10本・部屋仕切り
 // 傾きスライダーはモードごとに別の値を持つ: TILT=丸穴の傾き(12°)、FAN=扇の両端の開き角(40°)、
 // TOUT=10本版の一番外側の傾き(10°)。PITCH=扇で前後にずらす面の間隔（スティック径＋0.3）。
-const DEF = {MODE:'ring', N:5, TILT:12, FAN:40, TOUT:10, TWIST:90, THROAT:3.8, PITCH:3.3,
+// ORDER=扇の前後の並び: center=傾きの大きいものを中央寄りの面に（開き優先）/ lr・rl=左右の順に一列
+const DEF = {MODE:'ring', ORDER:'center', N:5, TILT:12, FAN:40, TOUT:10, TWIST:90, THROAT:3.8, PITCH:3.3,
              SD:3.0, SL:250, BD:70.5, DEPTH:62, MD:16.8, PL:15};
 const KEYS = ['N','TILT','TWIST','PITCH','THROAT','SD','SL','BD','DEPTH','MD','PL'];
 const TILT_KEY = {ring:'TILT', fan:'FAN', room:'TOUT'};
@@ -180,12 +187,14 @@ function line10(i){
 // 正面から見て交差しても実際には当たらない（最接近＝前後の間隔）。
 // 傾きの大きいスティックほど中央寄りの面に置き、端の面でも瓶の口に収まるようにする。
 // 扇の要（正面から見て交わる高さ）は、口の穴の上下中央。3Dモデルは 扇5本.py（同じ配置）。
-const FAN_SLOT = [1, 2, -2, -1, 0];                // i本目(角度 -2θ,-θ,0,θ,2θ)を置く面(×PITCH)
+// i本目(角度 -2θ,-θ,0,θ,2θ)を置く面(×PITCH、負が手前)。
+// 一列だと傾きの大きい両端が前後の端の面に来るので、口に収まる開き角は小さくなる。
+const FAN_SLOT = {center:[1, 2, -2, -1, 0], lr:[-2, -1, 0, 1, 2], rl:[2, 1, 0, -1, -2]};
 function lineFan(i){
   const a = (i - 2) * P.FAN/4 * Math.PI/180;
   const zc = P.PL - (NECK_H + INNER_WALL)/2;
   return {
-    p: new THREE.Vector3(-zc*Math.tan(a), FAN_SLOT[i]*P.PITCH, 0),
+    p: new THREE.Vector3(-zc*Math.tan(a), FAN_SLOT[P.ORDER][i]*P.PITCH, 0),
     d: new THREE.Vector3(Math.sin(a), 0, Math.cos(a))
   };
 }
@@ -277,12 +286,23 @@ function analyze(){
           tmin: Math.min(...tilts), tmax: Math.max(...tilts)};
 }
 
+const TOUCH = 0.05;                               // これ以下のめり込みは「接触」とみなす（計算誤差）
+const isBad = A => A.gap < 0 || A.wall < 0 || A.bore < -TOUCH;
+// 扇: いまの並び・間隔で干渉しない開き角の上限（二分探索）
+function fanLimit(){
+  const keep = P.FAN;
+  let lo = 0, hi = 60;
+  P.FAN = lo; if (isBad(analyze())) { P.FAN = keep; return null; }
+  for (let k = 0; k < 18; k++){ P.FAN = (lo + hi)/2; if (isBad(analyze())) hi = P.FAN; else lo = P.FAN; }
+  P.FAN = keep;
+  return Math.floor(lo*2)/2;                       // スライダーの刻み0.5°に切り下げ
+}
+
 function render(){
   clear(root);
   const A = analyze();
   buildBottle(); buildPlug();
-  const TOUCH = 0.05;                             // これ以下のめり込みは「接触」とみなす（計算誤差）
-  const bad = A.gap < 0 || A.wall < 0 || A.bore < -TOUCH;
+  const bad = isBad(A);
   for (const e of A.ends) root.add(rod(e.a, e.b, P.SD/2, bad ? matStickNG : matStick));
 
   const f = (v, u='mm') => v.toFixed(1) + u;
@@ -296,6 +316,7 @@ function render(){
     ['胴の内壁とのすき間', judge(A.wall, f(A.wall))],
     ['傾き（鉛直から）', A.tmax - A.tmin < .05 ? f(A.tmax, '°')
         : `${A.tmin.toFixed(1)}〜${A.tmax.toFixed(1)}°`],
+    ...(P.MODE === 'fan' ? [['この並びで開ける上限', (v => v === null ? '—' : f(v, '°'))(fanLimit())]] : []),
   ].map(([n,v]) => `<div><span class="n">${n}</span><span class="val">${v}</span></div>`).join('')
     + (bad ? '<div class="ng" style="margin-top:4px">干渉あり: 傾き・本数・スティック径を見直す</div>' : '');
 }
@@ -335,6 +356,8 @@ function syncUI(){
   $('row_TWIST').classList.toggle('off', !ring);
   $('row_THROAT').classList.toggle('off', !ring);
   $('row_PITCH').classList.toggle('off', P.MODE !== 'fan');
+  $('row_ORDER').style.display = P.MODE === 'fan' ? '' : 'none';
+  for (const b of document.querySelectorAll('[data-order]')) b.classList.toggle('on', b.dataset.order === P.ORDER);
   $('tiltLabel').textContent = {ring:'傾き', fan:'開き角（両端）', room:'外側の傾き'}[P.MODE];
   $('N_v').textContent = nSticks() + '本';
   $('modeNote').textContent = MODE_NOTE[P.MODE];
@@ -352,6 +375,9 @@ for (const b of document.querySelectorAll('[data-mode]'))
     P.MODE = b.dataset.mode; syncUI(); render(); save();
     if (P.MODE === 'fan') setView('front');       // 扇は正面から見る形なので正面に向ける
   };
+for (const b of document.querySelectorAll('[data-order]'))
+  b.onclick = () => { P.ORDER = b.dataset.order; syncUI(); render(); save(); };
+$('fanMax').onclick = () => { const v = fanLimit(); if (v !== null){ P.FAN = v; syncUI(); render(); save(); } };
 for (const b of document.querySelectorAll('[data-view]')) b.onclick = () => setView(b.dataset.view);
 $('reset').onclick = () => { Object.assign(P, DEF); syncUI(); render(); setView('iso'); save(); };
 
@@ -360,6 +386,7 @@ try{
   for (const k of [...KEYS,'FAN','TOUT']) if (typeof s[k] === 'number') P[k] = s[k];
   const m = {5:'ring', 10:'room'}[s.MODE] ?? s.MODE;   // 以前は数値で保存していた
   if (m in TILT_KEY) P.MODE = m;
+  if (s.ORDER in FAN_SLOT) P.ORDER = s.ORDER;
 }catch(e){}
 
 function resize(){
