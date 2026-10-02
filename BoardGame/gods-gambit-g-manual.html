@@ -2,206 +2,190 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#14161c">
 <title>ゴッズギャンビットG 説明書</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
 <style>
-  /* 1段組みの読み物。区切りは枠ではなく、太い罫線と見出しと余白で示す。枠を持つのはカードの区分だけ */
+  /* スマホのアプリのような1画面1話題。下のタブで画面を切り替える。背景は上から差す4色の光 */
   :root{
-    --bg:#f7f8fa; --surface:#ffffff; --ink:#14171c; --sub:#5b6370; --line:#d5d9e0; --rule:#14171c;
-    --normal:#3d444f; --good:#1f6b3a; --evil:#5f2a86; --horn:#8a6400; --red:#c2261b; --def:#1d5fa6;
-    --tint-n:#eef0f3; --tint-g:#e6f2ea; --tint-e:#f0e8f6; --tint-h:#f8efcf;
-    --display:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
-    --text:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic UI","Noto Sans JP",sans-serif;
-    color-scheme:light;
-  }
-  @media (prefers-color-scheme:dark){:root{
-    --bg:#15171c; --surface:#1d2026; --ink:#eceef2; --sub:#a0a7b3; --line:#363c47; --rule:#eceef2;
-    --normal:#c5cbd5; --good:#6ccb8b; --evil:#c097ee; --horn:#e8c25a; --red:#ff7d72; --def:#6db3f2;
-    --tint-n:#262a32; --tint-g:#1c2a22; --tint-e:#271f30; --tint-h:#2c2715;
+    --bg:#14161c; --cell:rgba(255,255,255,.055); --line:rgba(255,255,255,.09);
+    --ink:#f2f3f5; --soft:#c9cdd4; --sub:#8f96a3;
+    --n:#d0d4dc; --g:#6fd08e; --e:#c59cf0; --h:#f0c75c; --red:#ff8076; --def:#6fb6f5;
     color-scheme:dark;
-  }}
-  *{box-sizing:border-box}
-  html{scroll-behavior:smooth;scroll-padding-top:60px}
-  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
-  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--text);font-size:16px;line-height:1.8;-webkit-text-size-adjust:100%}
-  .wrap{max-width:720px;margin:0 auto;padding-inline:18px}
-  header{padding-block:40px 22px}
-  h1{font-family:var(--display);font-weight:800;font-size:2rem;line-height:1.25;margin:0 0 8px;letter-spacing:.03em;text-wrap:balance}
-  header p{margin:0;color:var(--sub);font-size:.92rem}
-  .suits{display:flex;gap:6px;margin-top:18px}
-  .suits i{width:34px;height:8px;border:1px solid var(--ink)}
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{background:var(--bg)}
+  body{margin:0;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI","Noto Sans JP",sans-serif;font-size:16px;line-height:1.7;-webkit-text-size-adjust:100%;
+    background:
+      radial-gradient(85% 460px at 0% -40px,rgba(206,62,54,.50),transparent 72%),
+      radial-gradient(85% 460px at 100% -40px,rgba(52,104,205,.55),transparent 72%),
+      radial-gradient(70% 300px at 50% -80px,rgba(240,199,92,.22),transparent 72%),
+      var(--bg);
+    background-repeat:no-repeat;min-height:100vh}
+  .app{max-width:520px;margin:0 auto;padding:0 16px calc(84px + env(safe-area-inset-bottom,0px))}
+  header{padding:calc(28px + env(safe-area-inset-top,0px)) 4px 0}
+  header small{display:block;font-size:.8rem;font-weight:600;color:var(--soft);letter-spacing:.08em}
+  h1{font-size:1.9rem;font-weight:800;line-height:1.25;margin:2px 0 0;letter-spacing:.01em}
+  .screen{display:none}
+  .screen.on{display:block}
+  h2{font-size:1.45rem;font-weight:800;line-height:1.3;margin:34px 4px 12px}
+  .screen>h2:first-child{margin-top:26px}
+  .lead{margin:0 4px 6px;color:var(--soft);font-size:.95rem}
 
-  /* 目次：ページ内の移動。下線つきの文字リンクで、今いる項目だけ太線 */
-  nav{position:sticky;top:0;z-index:5;background:var(--bg);border-block:1px solid var(--line)}
-  nav .wrap{display:flex;align-items:stretch;gap:0;overflow-x:auto;scrollbar-width:none}
-  nav .wrap::-webkit-scrollbar{display:none}
-  nav span{flex:none;align-self:center;font-size:.75rem;font-weight:700;color:var(--bg);background:var(--ink);padding:2px 7px;margin-right:12px;letter-spacing:.1em}
-  nav a{flex:none;padding:12px 2px 9px;margin-right:18px;color:var(--sub);text-decoration:none;font-size:.92rem;font-weight:700;white-space:nowrap;border-bottom:3px solid transparent}
-  nav a:hover{color:var(--ink)}
-  nav a.on{color:var(--ink);border-bottom-color:var(--ink)}
-  a:focus-visible,button:focus-visible{outline:2px solid var(--def);outline-offset:2px}
-
-  /* 項目の区切り：太い罫線＋明朝の見出し＋大きな余白 */
-  section{margin-top:64px;border-top:4px solid var(--rule);padding-top:14px}
-  section:first-child{margin-top:36px}
-  h2{font-family:var(--display);font-weight:800;font-size:1.65rem;line-height:1.3;margin:0 0 18px;letter-spacing:.04em}
-  h3{font-size:1.05rem;font-weight:700;line-height:1.5;margin:32px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--line)}
-  p{margin:0 0 12px}
-  ul,ol{margin:0 0 12px;padding-left:1.4em}
-  li{margin-bottom:5px}
-  strong{font-weight:700;background:linear-gradient(transparent 62%,var(--tint-h) 62%)}
-  .note{color:var(--sub);font-size:.9rem}
-  table{width:100%;border-collapse:collapse;margin:0 0 14px;font-size:.95rem}
-  th,td{border-bottom:1px solid var(--line);padding:9px 6px;text-align:left;vertical-align:top}
-  tr:first-child th,tr:first-child td{border-top:1px solid var(--line)}
-  th{font-weight:700;white-space:nowrap;width:1%;padding-right:16px}
-
-  /* 2通りの出し方：枠なしの2段比較 */
-  .two{display:grid;grid-template-columns:1fr 1fr;margin-bottom:14px;border-block:1px solid var(--line)}
-  .two>div{padding:12px 16px 4px 0;min-width:0}
-  .two>div+div{padding-left:16px;padding-right:0;border-left:1px solid var(--line)}
-  .two h3{margin:0 0 4px;padding:0;border:0}
-  .case h3{margin-top:22px;border:0;padding:0}
-  .case h3::before{content:"";display:inline-block;width:.6em;height:.6em;background:var(--ink);margin-right:.5em;vertical-align:.08em}
-
-  /* 表示の切り替え：つながった切り替えスイッチ */
-  .filter{display:flex;align-items:center;gap:10px;margin:0 0 18px}
-  .filter span{font-size:.8rem;font-weight:700;color:var(--sub)}
-  .seg{display:flex;flex-wrap:wrap;border:1.5px solid var(--ink);border-radius:4px;overflow:hidden}
-  .seg button{font:inherit;font-size:.86rem;font-weight:700;color:var(--ink);background:var(--surface);border:0;border-right:1.5px solid var(--ink);padding:6px 12px;cursor:pointer}
-  .seg button:last-child{border-right:0}
-  .seg button[aria-pressed="true"]{color:var(--surface);background:var(--ink)}
-
-  /* カードの区分：ここだけ枠を持つ */
-  .grp{--c:var(--normal);--t:var(--tint-n);margin-bottom:22px;border:1.5px solid var(--c);background:var(--surface)}
-  .grp.g{--c:var(--good);--t:var(--tint-g)}.grp.e{--c:var(--evil);--t:var(--tint-e)}.grp.h{--c:var(--horn);--t:var(--tint-h)}
-  .grp h3{margin:0;padding:7px 14px;border:0;background:var(--c);color:var(--surface);font-size:1rem;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 14px}
-  .grp h3 span{font-size:.78rem;font-weight:500;opacity:.92}
-  .card{display:grid;grid-template-columns:3.4rem 5.2rem 1fr;border-top:1px solid var(--line)}
-  .grp h3+.card{border-top:0}
-  .num{grid-row:1/3;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:1.6rem;font-variant-numeric:tabular-nums;color:var(--c);background:var(--t)}
-  .name{align-self:center;padding:10px 0 10px 12px;font-weight:700}
-  .card p{align-self:center;margin:0;padding:10px 14px 10px 4px;font-size:.94rem;line-height:1.75;min-width:0}
-  .k{display:inline-block;font-size:.72rem;font-weight:700;line-height:1;padding:4px 6px;margin-right:7px;color:var(--surface);background:var(--ink);vertical-align:.12em}
+  /* カード：区分ごとにひとまとまりのリスト */
+  .cat{margin:28px 4px 8px;font-size:1.15rem;font-weight:800;line-height:1.4;color:var(--c)}
+  .cat span{display:block;font-size:.8rem;font-weight:500;color:var(--sub)}
+  .cat,.list{--c:var(--n)}
+  .cat.g,.list.g{--c:var(--g)} .cat.e,.list.e{--c:var(--e)} .cat.h,.list.h{--c:var(--h)}
+  .list,.box{background:var(--cell);border-radius:16px;overflow:hidden}
+  .list{background:color-mix(in srgb,var(--c) 9%,rgba(255,255,255,.04))}
+  .row{display:grid;grid-template-columns:48px 1fr;align-items:center;padding:12px 16px 12px 0;position:relative}
+  .row+.row::before{content:"";position:absolute;left:48px;right:0;top:0;border-top:1px solid var(--line)}
+  .num{text-align:center;font-size:1.5rem;font-weight:800;line-height:1;color:var(--c);font-variant-numeric:tabular-nums}
+  .list.h .row{grid-template-columns:16px 1fr}
+  .list.h .row .name{color:var(--h)}
+  .name{font-size:1.05rem;font-weight:700;line-height:1.4}
+  .row p{margin:3px 0 0;font-size:.92rem;line-height:1.65;color:var(--soft)}
+  .k{display:inline-block;font-size:.7rem;font-weight:800;line-height:1;padding:4px 6px;margin-right:6px;border-radius:5px;color:#14161c;background:var(--ink);vertical-align:.14em}
   .k.def{background:var(--def)}
   .k.in{margin:0 4px}
-  .red{color:var(--red)}
-  .hide{display:none}
-  footer{margin-top:64px;border-top:1px solid var(--line);padding-block:18px 48px;font-size:.88rem}
-  footer a{color:var(--sub)}
-  @media(max-width:560px){
-    h1{font-size:1.6rem} h2{font-size:1.45rem}
-    .card{grid-template-columns:2.9rem 1fr}
-    .num{font-size:1.35rem}
-    .name{padding:9px 12px 0}
-    .card p{padding:1px 12px 10px}
-    .two{grid-template-columns:1fr}
-    .two>div{padding:12px 0 2px}
-    .two>div+div{padding-left:0;border-left:0;border-top:1px solid var(--line)}
-  }
+  .red{color:var(--red);font-weight:700}
+
+  /* 遊び方などの本文：話題ごとにひとまとまりの箱 */
+  .box{padding:16px 18px;margin-bottom:12px}
+  .box>:last-child{margin-bottom:0}
+  .box h3{font-size:1.08rem;font-weight:800;line-height:1.4;margin:0 0 8px}
+  .box p{margin:0 0 10px;color:var(--soft)}
+  .box ul,.box ol{margin:0 0 10px;padding-left:1.3em;color:var(--soft)}
+  .box li{margin-bottom:6px}
+  .box li::marker{color:var(--sub)}
+  strong{color:var(--h);font-weight:700}
+  .pair{display:grid;gap:12px;margin-bottom:12px}
+  .pair .box{margin:0}
+  dl{margin:0}
+  dl div{padding:11px 0;border-top:1px solid var(--line)}
+  dl div:first-child{border-top:0;padding-top:0}
+  dl div:last-child{padding-bottom:0}
+  dt{font-weight:700}
+  dd{margin:2px 0 0;color:var(--soft);font-size:.95rem}
+  .back{display:block;margin:28px 4px 0;color:var(--sub);font-size:.88rem}
+
+  /* 下のタブ */
+  nav{position:fixed;left:0;right:0;bottom:0;z-index:10;background:rgba(24,27,34,.86);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+  nav div{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+  nav button{font:inherit;background:none;border:0;color:var(--sub);font-size:.9rem;font-weight:700;padding:16px 2px 15px;cursor:pointer;position:relative}
+  nav button::before{content:"";position:absolute;left:22%;right:22%;top:-1px;height:3px;border-radius:0 0 3px 3px;background:transparent}
+  nav button[aria-selected="true"]{color:var(--ink)}
+  nav button[aria-selected="true"]::before{background:var(--h)}
+  nav button:focus-visible{outline:2px solid var(--def);outline-offset:-3px;border-radius:8px}
 </style>
 </head>
 <body>
-<header class="wrap">
-  <h1>ゴッズギャンビットG 説明書</h1>
-  <p>付属の説明書を、卓で見ながら遊べるように書き直したもの。</p>
-  <div class="suits" aria-hidden="true"><i style="background:#fff"></i><i style="background:#111"></i><i style="background:#c8423b"></i><i style="background:#3d6fc4"></i></div>
+<div class="app">
+<header>
+  <small>説明書</small>
+  <h1>ゴッズギャンビットG</h1>
 </header>
-<nav aria-label="目次"><div class="wrap">
-  <span>目次</span><a href="#cards">カード一覧</a><a href="#turn">手番</a><a href="#defense">防御</a><a href="#end">終了と点数</a><a href="#setup">準備</a><a href="#detail">細かいルール</a>
-</div></nav>
-<main class="wrap">
 
-<section id="cards">
-<h2>カード一覧</h2>
-<div class="filter" role="group" aria-label="表示するカード">
-  <span>表示</span><div class="seg">
-  <button data-f="all" aria-pressed="true">すべて</button>
-  <button data-f="atk" aria-pressed="false">攻撃</button>
-  <button data-f="def" aria-pressed="false">防御</button>
-  <button data-f="g:n" aria-pressed="false">ノーマル</button>
-  <button data-f="g:g" aria-pressed="false">善</button>
-  <button data-f="g:e" aria-pressed="false">悪</button>
-</div></div>
-<div class="grp n" data-g="n"><h3>ノーマル<span>白・黒・赤・青の4色に、1〜9が2枚ずつ。数字がそのままペナルティ</span></h3>
-<div class="card" data-k=""><div class="num">1</div><div class="name">信徒</div><p>能力なし</p></div>
-<div class="card" data-k=""><div class="num">2</div><div class="name">僧侶</div><p>このカード以外の自分のカルマを0〜1枚、場札に出す</p></div>
-<div class="card" data-k="atk"><div class="num">3</div><div class="name">宣教師</div><p><b class="k atk">攻撃</b>他のプレイヤーを1人選ぶ。その人は次の手番を失う。<br>すでに次の手番を失っている人を選んでも、失う手番は増えない</p></div>
-<div class="card" data-k=""><div class="num">4</div><div class="name">天使</div><p>手札を0〜1枚、場札に出す</p></div>
-<div class="card" data-k="atk"><div class="num">5</div><div class="name">聖騎士</div><p><b class="k atk">攻撃</b>他のプレイヤーを1人選ぶ。その人は2枚引く</p></div>
-<div class="card" data-k=""><div class="num">6</div><div class="name">司祭</div><p>このカード以外の自分のカルマを0〜2枚、1枚ずつ場札に出す</p></div>
-<div class="card" data-k=""><div class="num">7</div><div class="name">教主</div><p>もう一度手番を行う</p></div>
-<div class="card" data-k=""><div class="num">8</div><div class="name">従神</div><p>手札を0〜2枚、1枚ずつ場札に出す</p></div>
-<div class="card" data-k="def"><div class="num">9</div><div class="name">化身</div><p><b class="k def">防御</b>自分の手番以外で、他のプレイヤーの<b class="k atk in">攻撃</b>の対象になったとき、このカードが場札と同じ色か同じ数字なら、カルマ置場に出して使える。<br>その攻撃を無効にし、自分が手番プレイヤーになる。<br>防がれた攻撃カードは、そのままカルマ置場に残る</p></div>
+<div class="screen on" id="s-cards">
+<h3 class="cat n">ノーマル<span>白・黒・赤・青の4色に、1〜9が2枚ずつ。数字がそのままペナルティ</span></h3>
+<div class="list n">
+  <div class="row"><div class="num">1</div><div><div class="name">信徒</div><p>能力なし</p></div></div>
+  <div class="row"><div class="num">2</div><div><div class="name">僧侶</div><p>このカード以外の自分のカルマを0〜1枚、場札に出す</p></div></div>
+  <div class="row"><div class="num">3</div><div><div class="name">宣教師</div><p><b class="k atk">攻撃</b>他のプレイヤーを1人選ぶ。その人は次の手番を失う。<br>すでに次の手番を失っている人を選んでも、失う手番は増えない</p></div></div>
+  <div class="row"><div class="num">4</div><div><div class="name">天使</div><p>手札を0〜1枚、場札に出す</p></div></div>
+  <div class="row"><div class="num">5</div><div><div class="name">聖騎士</div><p><b class="k atk">攻撃</b>他のプレイヤーを1人選ぶ。その人は2枚引く</p></div></div>
+  <div class="row"><div class="num">6</div><div><div class="name">司祭</div><p>このカード以外の自分のカルマを0〜2枚、1枚ずつ場札に出す</p></div></div>
+  <div class="row"><div class="num">7</div><div><div class="name">教主</div><p>もう一度手番を行う</p></div></div>
+  <div class="row"><div class="num">8</div><div><div class="name">従神</div><p>手札を0〜2枚、1枚ずつ場札に出す</p></div></div>
+  <div class="row"><div class="num">9</div><div><div class="name">化身</div><p><b class="k def">防御</b>自分の手番以外で、他のプレイヤーの<b class="k atk in">攻撃</b>の対象になったとき、このカードが場札と同じ色か同じ数字なら、カルマ置場に出して使える。<br>その攻撃を無効にし、自分が手番プレイヤーになる。<br>防がれた攻撃カードは、そのままカルマ置場に残る</p></div></div>
 </div>
-<div class="grp g" data-g="g"><h3>ワイルド（善）<span>場札が何色でも出せる。場札に出したら色を決める</span></h3>
-<div class="card" data-k="atk"><div class="num">0</div><div class="name">道化</div><p><b class="k atk">攻撃</b>他のプレイヤーを1人選ぶ。その人のカルマ1枚を自分の手札に加える</p></div>
-<div class="card" data-k="atk"><div class="num">10</div><div class="name">妖精</div><p><b class="k atk">攻撃</b>他のプレイヤーを1人選ぶ。このカード以外の自分のカルマ1枚をその人のカルマに加える</p></div>
-<div class="card" data-k=""><div class="num">10</div><div class="name">魔術師</div><p>場札の色を決める。その後、手札を0〜1枚、場札に出す</p></div>
-<div class="card" data-k=""><div class="num">10</div><div class="name">王族</div><p>このカード以外の自分のカルマを1枚選ぶ。<br>このカードは、選んだカードの能力をコピーして使う（コピーした文中の「このカード」は王族を指す）</p></div>
-<div class="card" data-k=""><div class="num">10</div><div class="name">白魔女</div><p>公開されている喇叭吹き1枚を山札に戻し、山札を切る</p></div>
-<div class="card" data-k=""><div class="num">20</div><div class="name">黒魔女</div><p>山札から喇叭吹き1枚を探して公開し、山札を切る</p></div>
-<div class="card" data-k=""><div class="num">20</div><div class="name">英雄</div><p>手札から、場札と同じ色のカード（ワイルド以外）を好きな枚数、まとめて場札に出す。<br>一番上に置いたカードが新しい場札になる</p></div>
-<div class="card" data-k="atk"><div class="num">20</div><div class="name">竜</div><p><b class="k atk">攻撃</b>他のプレイヤーを1人選ぶ。このカードをその人のカルマに加える</p></div>
-<div class="card" data-k="atk"><div class="num">30</div><div class="name">戦乙女</div><p><b class="k atk">攻撃</b>他のプレイヤーを1人選ぶ。手札1枚をその人に渡す</p></div>
-<div class="card" data-k="def"><div class="num">30</div><div class="name">女神</div><p><b class="k def">防御</b>自分の手番以外で、他のプレイヤーの<b class="k atk in">攻撃</b>の対象になったとき、カルマ置場に出して使える。<br>その攻撃は自分ではなく、攻撃した本人が受ける。<br>攻撃カードは、そのままカルマ置場に残る</p></div>
+<h3 class="cat g">ワイルド（善）<span>場札が何色でも出せる。場札に出したら色を決める</span></h3>
+<div class="list g">
+  <div class="row"><div class="num">0</div><div><div class="name">道化</div><p><b class="k atk">攻撃</b>他のプレイヤーを1人選ぶ。その人のカルマ1枚を自分の手札に加える</p></div></div>
+  <div class="row"><div class="num">10</div><div><div class="name">妖精</div><p><b class="k atk">攻撃</b>他のプレイヤーを1人選ぶ。このカード以外の自分のカルマ1枚をその人のカルマに加える</p></div></div>
+  <div class="row"><div class="num">10</div><div><div class="name">魔術師</div><p>場札の色を決める。その後、手札を0〜1枚、場札に出す</p></div></div>
+  <div class="row"><div class="num">10</div><div><div class="name">王族</div><p>このカード以外の自分のカルマを1枚選ぶ。<br>このカードは、選んだカードの能力をコピーして使う（コピーした文中の「このカード」は王族を指す）</p></div></div>
+  <div class="row"><div class="num">10</div><div><div class="name">白魔女</div><p>公開されている喇叭吹き1枚を山札に戻し、山札を切る</p></div></div>
+  <div class="row"><div class="num">20</div><div><div class="name">黒魔女</div><p>山札から喇叭吹き1枚を探して公開し、山札を切る</p></div></div>
+  <div class="row"><div class="num">20</div><div><div class="name">英雄</div><p>手札から、場札と同じ色のカード（ワイルド以外）を好きな枚数、まとめて場札に出す。<br>一番上に置いたカードが新しい場札になる</p></div></div>
+  <div class="row"><div class="num">20</div><div><div class="name">竜</div><p><b class="k atk">攻撃</b>他のプレイヤーを1人選ぶ。このカードをその人のカルマに加える</p></div></div>
+  <div class="row"><div class="num">30</div><div><div class="name">戦乙女</div><p><b class="k atk">攻撃</b>他のプレイヤーを1人選ぶ。手札1枚をその人に渡す</p></div></div>
+  <div class="row"><div class="num">30</div><div><div class="name">女神</div><p><b class="k def">防御</b>自分の手番以外で、他のプレイヤーの<b class="k atk in">攻撃</b>の対象になったとき、カルマ置場に出して使える。<br>その攻撃は自分ではなく、攻撃した本人が受ける。<br>攻撃カードは、そのままカルマ置場に残る</p></div></div>
 </div>
-<div class="grp e" data-g="e"><h3>ワイルド（悪）<span>場札が何色でも出せる</span></h3>
-<div class="card" data-k="atk"><div class="num">10</div><div class="name">悪魔</div><p><b class="red">このカードは場札に出せない。</b><br><b class="k atk">攻撃</b>他のプレイヤーを1人選ぶ。その人は2枚引く</p></div>
-<div class="card" data-k="atk"><div class="num">20</div><div class="name">死霊</div><p><b class="red">このカードは場札に出せない。</b><br><b class="k atk">攻撃</b>他のプレイヤーを1人選ぶ。その人は4枚引く</p></div>
-<div class="card" data-k="atk"><div class="num">30</div><div class="name">邪神</div><p><b class="red">このカードは場札に出せない。</b><br><b class="k atk">攻撃</b>他のプレイヤーを1人選ぶ。その人は手札が7枚になるまで引く</p></div>
+<h3 class="cat e">ワイルド（悪）<span>場札が何色でも出せる</span></h3>
+<div class="list e">
+  <div class="row"><div class="num">10</div><div><div class="name">悪魔</div><p><b class="red">このカードは場札に出せない。</b><br><b class="k atk">攻撃</b>他のプレイヤーを1人選ぶ。その人は2枚引く</p></div></div>
+  <div class="row"><div class="num">20</div><div><div class="name">死霊</div><p><b class="red">このカードは場札に出せない。</b><br><b class="k atk">攻撃</b>他のプレイヤーを1人選ぶ。その人は4枚引く</p></div></div>
+  <div class="row"><div class="num">30</div><div><div class="name">邪神</div><p><b class="red">このカードは場札に出せない。</b><br><b class="k atk">攻撃</b>他のプレイヤーを1人選ぶ。その人は手札が7枚になるまで引く</p></div></div>
 </div>
-<div class="grp h" data-g="h"><h3>喇叭吹き<span>4枚</span></h3>
-<div class="card" data-k=""><div class="num"></div><div class="name">喇叭吹き</div><p>引いたら公開して脇に置く。喇叭吹きも引いた1枚に数える。4枚公開されたらラウンド終了</p></div>
+<h3 class="cat h">喇叭吹き<span>全部で4枚</span></h3>
+<div class="list h">
+  <div class="row"><div class="num"></div><div><div class="name">喇叭吹き</div><p>引いたら公開して脇に置く。喇叭吹きも引いた1枚に数える。4枚公開されたらラウンド終了</p></div></div>
 </div>
-<p class="note">能力で場札に出すカードも、そのときの場札と同じ色か同じ数字に限る。</p>
-</section>
+</div>
 
-<section id="turn">
+<div class="screen" id="s-play">
 <h2>手番</h2>
-<p>時計回りに進める。手番は次の3通りのどれかで、<strong>パスはない</strong>。</p>
-<ol>
-  <li>カードを1枚引くだけ</li>
-  <li>カードを1枚出す</li>
-  <li>カードを1枚引いてから、1枚出す（引いたカード以外でもよい）</li>
-</ol>
-<ul>
-  <li>出したカードの能力の処理が終わったら、手番は自動的に終わる。</li>
-  <li>出したあとに引くことはできない。引くのは必ず出す前。</li>
-  <li>「出せない」と言う必要はない。出せるカードを持っていても、引くだけで終えてよい。</li>
-</ul>
-
-<h3>出せるカード</h3>
-<p>場札と<strong>同じ色</strong>か<strong>同じ数字</strong>のカード。ワイルドは場札が何であっても出せる。</p>
-
-<h3>出し方は2通り</h3>
-<div class="two">
-  <div><h3>場札に出す</h3><p>能力は使わない。場札がそのカードに変わる。ワイルドを出したら、場札の色を白・黒・赤・青から決める。</p></div>
-  <div><h3>カルマ置場に出す</h3><p>自分の手元に出して能力を使う。場札は変わらない。処理が終わると、そのカードは自分の<strong>カルマ</strong>として残り、ペナルティになる。</p></div>
+<div class="box">
+  <h3>手番にすること</h3>
+  <p>時計回りに進める。次の3つからどれか1つを選ぶ。<strong>パスはない</strong>。</p>
+  <ul>
+    <li>カードを1枚引くだけ</li>
+    <li>カードを1枚出す</li>
+    <li>カードを1枚引いてから、1枚出す（引いたカード以外でもよい）</li>
+  </ul>
+  <p>出したカードの能力の処理が終わったら、手番は自動的に終わる。出したあとに引くことはできない。</p>
+  <p>「出せない」と言う必要はない。出せるカードを持っていても、引くだけで終えてよい。</p>
 </div>
-<p>どちらの出し方でも、場札と同じ色か同じ数字という条件は必要になる。</p>
-</section>
+<div class="box">
+  <h3>出せるカード</h3>
+  <p>場札と<strong>同じ色</strong>か<strong>同じ数字</strong>のカード。ワイルドは場札が何であっても出せる。</p>
+  <p>能力で場札に出すカードも、この条件に従う。</p>
+</div>
 
-<section id="defense">
+<h2>出し方は2通り</h2>
+<div class="pair">
+  <div class="box"><h3>場札に出す</h3><p>能力は使わない。場札がそのカードに変わる。ワイルドを出したら、場札の色を白・黒・赤・青から決める。</p></div>
+  <div class="box"><h3>カルマ置場に出す</h3><p>自分の手元に出して能力を使う。場札は変わらない。処理が終わると、そのカードは自分のカルマとして残り、ペナルティになる。</p></div>
+</div>
+
 <h2>防御</h2>
-<p>防御の能力を持つのは化身と女神の2種類。</p>
-<ul>
-  <li>他のプレイヤーの<b class="k atk in">攻撃</b>の対象になったとき、手番を無視してカルマ置場に出し、能力を使える。</li>
-  <li>化身は、場札と同じ色か9のときだけ使える。女神はワイルドなので、いつでも使える。</li>
-  <li>使った防御カードは自分のカルマになる。</li>
-  <li>自分の手番に防御カードをカルマ置場に出しても、何も起きない。</li>
-  <li>女神で自分に返ってきた攻撃には、防御を使えない。</li>
-  <li>攻撃の対象に選べるのは他のプレイヤーだけ。自分は選べない。</li>
-</ul>
-</section>
+<div class="box">
+  <p>防御の能力を持つのは化身と女神の2種類。</p>
+  <ul>
+    <li>他のプレイヤーの<b class="k atk in">攻撃</b>の対象になったとき、手番を無視してカルマ置場に出し、能力を使える。</li>
+    <li>化身は、場札と同じ色か9のときだけ使える。女神はワイルドなので、いつでも使える。</li>
+    <li>使った防御カードは自分のカルマになる。</li>
+    <li>自分の手番に防御カードをカルマ置場に出しても、何も起きない。</li>
+    <li>女神で自分に返ってきた攻撃には、防御を使えない。</li>
+    <li>攻撃の対象に選べるのは他のプレイヤーだけ。自分は選べない。</li>
+  </ul>
+</div>
 
-<section id="end">
-<h2>ラウンドの終了と点数</h2>
-<p>次のどちらかで、ラウンドは即座に終わる。</p>
-<div class="case">
+<h2>細かいルール</h2>
+<div class="box">
+  <h3>能力で場札に出すとき</h3>
+  <p>僧侶・司祭・天使・従神・魔術師に共通する。</p>
+  <ul>
+    <li>「0〜2枚」とあるとおり、1枚だけ出しても、1枚も出さなくてもよい。</li>
+    <li>2枚出すときは1枚ずつ出す。1枚目で場札が変わるので、2枚目は新しい場札を見て出す。</li>
+    <li>能力を使ったカード自身は、カルマから出せない。そのカードが正式にカルマになるのは、能力の処理が終わったあとだから。</li>
+  </ul>
+</div>
+<div class="box">
+  <h3>そのほか</h3>
+  <ul>
+    <li>手札の枚数は公開情報。いつでも確かめてよい。</li>
+    <li>宣教師で手番を失っている人が化身で手番プレイヤーになった場合、その手番を失い、左隣の人の手番になる。</li>
+  </ul>
+</div>
+</div>
+
+<div class="screen" id="s-end">
+<h2>ラウンドの終了</h2>
+<p class="lead">次のどちらかで、ラウンドは即座に終わる。</p>
+<div class="box">
   <h3>誰かの手札がなくなった（あがり）</h3>
   <ul>
     <li>最後の1枚は、場札に出してもカルマ置場に出してもよい。</li>
@@ -209,92 +193,76 @@
     <li>防御で最後の1枚を出してもよい。防御を処理して終了する。</li>
   </ul>
 </div>
-<div class="case">
+<div class="box">
   <h3>喇叭吹きが4枚公開された</h3>
-  <ul>
-    <li>引く効果の途中で4枚目が出た場合は、引くべきカードをすべて引いてから終了する。</li>
-  </ul>
+  <p>引く効果の途中で4枚目が出た場合は、引くべきカードをすべて引いてから終了する。</p>
 </div>
 
-<h3>点数計算</h3>
-<table>
-  <tr><th>あがった人</th><td>カルマが何枚あっても <strong>0点</strong></td></tr>
-  <tr><th>ほかの人</th><td>手札の数字の合計 ＋ 自分のカルマの数字の合計がペナルティ。その分の点数トークンを受け取る</td></tr>
-</table>
-<p>トークンは他の人に見えないように持つ。</p>
+<h2>点数計算</h2>
+<div class="box"><dl>
+  <div><dt>あがった人</dt><dd>カルマが何枚あっても<strong>0点</strong></dd></div>
+  <div><dt>ほかの人</dt><dd>手札の数字の合計と、自分のカルマの数字の合計を足したものがペナルティ。その分の点数トークンを受け取る</dd></div>
+</dl></div>
+<p class="lead">トークンは他の人に見えないように持つ。</p>
 
-<h3>次のラウンドとゲームの終了</h3>
-<ul>
-  <li>全部のカードを集めて切り直し、また7枚ずつ配る。</li>
-  <li>スタートプレイヤーは、あがった人、または4枚目の喇叭吹きを引いた人の左隣。</li>
-  <li>3ラウンド終わったとき、ペナルティの合計が最も少ない人の勝ち。</li>
-</ul>
+<h2>次のラウンド</h2>
+<div class="box">
+  <ul>
+    <li>全部のカードを集めて切り直し、また7枚ずつ配る。</li>
+    <li>スタートプレイヤーは、あがった人、または4枚目の喇叭吹きを引いた人の左隣。</li>
+    <li>3ラウンド終わったとき、ペナルティの合計が最も少ない人の勝ち。</li>
+  </ul>
+</div>
+<div class="box">
+  <h3>選択ルール：減点方式</h3>
+  <p>各自が100点か200点を持ち、ラウンドごとのペナルティを引いていく。誰かが0点になったら終了し、持ち点が最も多い人の勝ち。ふつうは200点がよい。</p>
+</div>
+</div>
 
-<h3>選択ルール：減点方式</h3>
-<p>各自が100点か200点を持ち、ラウンドごとのペナルティを引いていく。誰かが0点になったら終了し、持ち点が最も多い人の勝ち。ふつうは200点がよい。</p>
-</section>
-
-<section id="setup">
+<div class="screen" id="s-setup">
 <h2>準備</h2>
-<ol>
-  <li>プレイカード104枚を切って山札にし、各自に7枚ずつ配る。</li>
-  <li>山札から1枚めくって場札にする。</li>
-  <li>じゃんけんなどでスタートプレイヤーを決める。</li>
-</ol>
-<table>
-  <tr><th>配られた手札に<br>喇叭吹きがある</th><td>公開して脇に置く。補充はしないので、手札が少ない状態で始まる</td></tr>
-  <tr><th>最初の場札が<br>喇叭吹き</th><td>脇に置いて、新しくめくる</td></tr>
-  <tr><th>最初の場札が<br>ワイルド</th><td>スタートプレイヤーが色を決める</td></tr>
-  <tr><th>始まる前に<br>4枚そろった</th><td>そのラウンドは無効。山札を作り直してやり直す</td></tr>
-</table>
+<div class="box">
+  <ol>
+    <li>プレイカード104枚を切って山札にし、各自に7枚ずつ配る。</li>
+    <li>山札から1枚めくって場札にする。</li>
+    <li>じゃんけんなどでスタートプレイヤーを決める。</li>
+  </ol>
+</div>
 
-<h3>内容物</h3>
-<table>
-  <tr><th>プレイカード</th><td>104枚（ノーマル72、ワイルド善21、ワイルド悪7、喇叭吹き4）</td></tr>
-  <tr><th>ほかのカード</th><td>カード名・能力一覧カード6枚、ブランクカード2枚</td></tr>
-  <tr><th>点数トークン</th><td>80個（100点×4、50点×8、10点×20、5点×8、1点×40）</td></tr>
-</table>
-</section>
+<h2>こんなときは</h2>
+<div class="box"><dl>
+  <div><dt>配られた手札に喇叭吹きがある</dt><dd>公開して脇に置く。補充はしないので、手札が少ない状態で始まる</dd></div>
+  <div><dt>最初の場札が喇叭吹き</dt><dd>脇に置いて、新しくめくる</dd></div>
+  <div><dt>最初の場札がワイルド</dt><dd>スタートプレイヤーが色を決める</dd></div>
+  <div><dt>始まる前に喇叭吹きが4枚そろった</dt><dd>そのラウンドは無効。山札を作り直してやり直す</dd></div>
+</dl></div>
 
-<section id="detail">
-<h2>細かいルール</h2>
-<ul>
-  <li>手札の枚数は公開情報。いつでも確かめてよい。</li>
-  <li>宣教師で手番を失っている人が化身で手番プレイヤーになった場合、その手番を失い、左隣の人の手番になる。</li>
-</ul>
-<h3>能力で場札に出すとき</h3>
-<p>僧侶・司祭・天使・従神・魔術師に共通する。</p>
-<ul>
-  <li>出すカードは、そのときの場札と同じ色か同じ数字に限る。</li>
-  <li>「0〜2枚」とあるとおり、1枚だけ出しても、1枚も出さなくてもよい。</li>
-  <li>2枚出すときは1枚ずつ出す。1枚目で場札が変わるので、2枚目は新しい場札を見て出す。</li>
-  <li>能力を使ったカード自身は、カルマから出せない。そのカードが正式にカルマになるのは、能力の処理が終わったあとだから。</li>
-</ul>
-</section>
+<h2>内容物</h2>
+<div class="box"><dl>
+  <div><dt>プレイカード 104枚</dt><dd>ノーマル72、ワイルド善21、ワイルド悪7、喇叭吹き4</dd></div>
+  <div><dt>ほかのカード</dt><dd>カード名・能力一覧カード6枚、ブランクカード2枚</dd></div>
+  <div><dt>点数トークン 80個</dt><dd>100点×4、50点×8、10点×20、5点×8、1点×40</dd></div>
+</dl></div>
+<a class="back" href="../">← Public Tools に戻る</a>
+</div>
+</div>
 
-</main>
-<footer class="wrap"><a href="../">← Public Tools に戻る</a></footer>
+<nav><div role="tablist">
+  <button role="tab" data-t="cards" aria-selected="true">カード</button>
+  <button role="tab" data-t="play" aria-selected="false">遊び方</button>
+  <button role="tab" data-t="end" aria-selected="false">終了と点数</button>
+  <button role="tab" data-t="setup" aria-selected="false">準備</button>
+</div></nav>
 <script>
-const btns=document.querySelectorAll('.filter button');
-btns.forEach(b=>b.addEventListener('click',()=>{
-  btns.forEach(x=>x.setAttribute('aria-pressed',x===b));
-  const f=b.dataset.f;
-  document.querySelectorAll('.grp').forEach(g=>{
-    let shown=0;
-    g.querySelectorAll('.card').forEach(c=>{
-      const ok=f==='all'||(f.startsWith('g:')?g.dataset.g===f.slice(2):c.dataset.k===f);
-      c.classList.toggle('hide',!ok); if(ok)shown++;
-    });
-    g.classList.toggle('hide',!shown);
-  });
-}));
-const links=[...document.querySelectorAll('nav a')];
-const io=new IntersectionObserver(es=>es.forEach(e=>{
-  if(!e.isIntersecting)return;
-  links.forEach(a=>a.classList.toggle('on',a.hash==='#'+e.target.id));
-  const on=document.querySelector('nav a.on'); if(on)on.scrollIntoView({block:'nearest',inline:'nearest'});
-}),{rootMargin:'-70px 0px -70% 0px'});
-document.querySelectorAll('main section').forEach(x=>io.observe(x));
+const tabs=[...document.querySelectorAll('nav button')];
+function show(id,scroll){
+  if(!document.getElementById('s-'+id))id='cards';
+  tabs.forEach(b=>b.setAttribute('aria-selected',b.dataset.t===id));
+  document.querySelectorAll('.screen').forEach(x=>x.classList.toggle('on',x.id==='s-'+id));
+  if(scroll)window.scrollTo(0,0);
+}
+tabs.forEach(b=>b.addEventListener('click',()=>{history.replaceState(null,'','#'+b.dataset.t);show(b.dataset.t,true);}));
+show(location.hash.slice(1)||'cards',false);
 </script>
 </body>
 </html>
