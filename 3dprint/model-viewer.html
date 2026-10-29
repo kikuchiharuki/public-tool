@@ -20,14 +20,18 @@
     background:var(--panel);backdrop-filter:blur(8px);border-radius:11px;padding:8px 11px;
     box-shadow:var(--shadow);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .picker{position:relative;flex:1 1 300px;min-width:190px;max-width:520px}
-  #q{width:100%;box-sizing:border-box;font:13px/1.4 inherit;padding:5px 8px;
-    border:1px solid var(--line);border-radius:7px;background:#fff}
-  #q:focus{outline:none;border-color:#7aa7dd;box-shadow:0 0 0 3px #dce8f7}
-  #list{position:absolute;left:0;right:0;top:100%;margin-top:5px;max-height:64vh;overflow:auto;
+  #q{width:100%;box-sizing:border-box;font:13px/1.4 inherit;padding:5px 8px;text-align:left;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #q::after{content:" ▾";color:var(--dim)}
+  #list{position:absolute;left:0;top:100%;margin-top:5px;width:min(760px,calc(100vw - 40px));
     background:#fff;border:1px solid var(--line);border-radius:9px;
     box-shadow:0 8px 26px rgba(0,0,0,.2);display:none;z-index:4}
-  #list.on{display:block}
-  .it{padding:5px 9px;cursor:pointer;display:flex;gap:10px;align-items:baseline}
+  #list.on{display:flex}
+  #dirs,#files{height:calc(10 * 27px);overflow:auto}
+  #dirs{flex:0 0 210px;border-right:1px solid var(--line);background:#fafaf8;border-radius:9px 0 0 9px}
+  #files{flex:1;min-width:0}
+  .it{padding:4px 9px;height:19px;cursor:pointer;display:flex;gap:10px;align-items:baseline}
+  #dirs .it.on{background:#dfe9f6;font-weight:600}
   .it .n{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .it.sel{background:#e8f0fb}
   .it .p{color:var(--dim);font-size:11px}
@@ -107,8 +111,8 @@
 
 <div class="bar">
   <span class="picker">
-    <input id="q" placeholder="ファイル名で絞り込み（↑↓ / Enter）" autocomplete="off" spellcheck="false">
-    <div id="list"></div>
+    <button id="q" title="クリックで一覧（/ キーでも開閉）">…</button>
+    <div id="list"><div id="dirs"></div><div id="files"></div></div>
   </span>
   <button id="rescan" title="フォルダを読み直す">再スキャン</button>
   <button id="pickdir" title="別のフォルダを選ぶ" hidden>フォルダ</button>
@@ -176,7 +180,7 @@
 </script>
 <script type="module">
 import * as THREE from 'three';
-import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {TrackballControls} from 'three/addons/controls/TrackballControls.js';
 import {STLLoader}     from 'three/addons/loaders/STLLoader.js';
 import {ThreeMFLoader} from 'three/addons/loaders/3MFLoader.js';
 import {OBJLoader}     from 'three/addons/loaders/OBJLoader.js';
@@ -191,14 +195,14 @@ const scene=new THREE.Scene(); scene.background=new THREE.Color(0xf2f2ef);
 // カメラは透視と正投影の2本を持ち、切り替えるときに位置と画角を引き継ぐ
 const persp=new THREE.PerspectiveCamera(45,1,0.05,20000);
 const ortho=new THREE.OrthographicCamera(-1,1,1,-1,-10000,20000);
-persp.up.set(0,0,1); ortho.up.set(0,0,1);          // Z上。以後どこでも変えない
+persp.up.set(0,0,1); ortho.up.set(0,0,1);          // 既定はZ上。手で回すと上向きも一緒に回る（360°どこまでも回せる）
 let cam=persp, orthoH=200;
 function mkCtl(c){
-  const k=new OrbitControls(c,canvas);
-  k.enableDamping=true; k.dampingFactor=0.12;
-  k.rotateSpeed=0.85; k.zoomSpeed=0.9; k.panSpeed=0.9;
-  k.screenSpacePanning=true; k.zoomToCursor=true;
-  k.minPolarAngle=1e-3; k.maxPolarAngle=Math.PI-1e-3;   // 極ちょうどでの反転を避ける
+  // Trackball: 真上・真下で止まる壁がなく、どの向きにも回り続けられる（OrbitControlsは極で止まる）
+  const k=new TrackballControls(c,canvas);
+  k.rotateSpeed=3.0; k.zoomSpeed=1.2; k.panSpeed=0.8;
+  k.staticMoving=false; k.dynamicDampingFactor=0.15;
+  k.keys=[];                                           // 検索欄の入力でA/S/Dが操作モードを奪わないように
   return k;
 }
 let ctl=mkCtl(cam);
@@ -313,7 +317,7 @@ async function scan(keep){
   render();
 }
 
-// ── ファイル選択（1本のリスト＋絞り込み）─────────────────────────────────
+// ── ファイル選択（左=フォルダ、右=そのフォルダのファイル）────────────────
 function ago(ms){
   const s=(Date.now()-ms)/1000;
   if(s<3600) return Math.max(1,Math.round(s/60))+'分前';
@@ -321,50 +325,58 @@ function ago(ms){
   if(s<86400*30) return Math.round(s/86400)+'日前';
   return new Date(ms).toLocaleDateString('ja-JP',{year:'2-digit',month:'numeric',day:'numeric'});
 }
-const q=$('q'), listEl=$('list');
-let view=[], idx=0, sel=null, cur=null, mtimes={}, seq=0;
-const terms=()=>q.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
-function mark(text,ts){
-  let out=text.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-  for(const t of ts){
-    const i=out.toLowerCase().indexOf(t);
-    if(i<0) continue;
-    out=out.slice(0,i)+'<b>'+out.slice(i,i+t.length)+'</b>'+out.slice(i+t.length);
-  }
-  return out;
+const q=$('q'), listEl=$('list'), dirsEl=$('dirs'), filesEl=$('files');
+let view=[], idx=0, sel=null, cur=null, mtimes={}, seq=0, dir=null;   // dir=null は「すべて」
+const esc=t=>t.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const dirName=sub=>sub.replace(/\/$/,'').split('/').pop()||sub||'（直下）';
+function row(html,on,click){
+  const el=document.createElement('div');
+  el.className='it'+(on?' on':''); el.innerHTML=html;
+  el.onmousedown=e=>{ e.preventDefault(); click(); };
+  return el;
 }
 function render(){
-  const ts=terms();
-  view=FILES.filter(f=>ts.every(t=>(f.rel+' '+f.sub).toLowerCase().includes(t))).slice(0,300);
+  const dirs=[...new Set(FILES.map(f=>f.sub))];       // FILES は新しい順なのでフォルダも新しい順
+  if(dir!==null&&!dirs.includes(dir)) dir=null;
+  dirsEl.replaceChildren(row('すべて',dir===null,()=>{ dir=null; idx=0; render(); }),
+    ...dirs.map(d=>{ const el=row(`<span class="n">${esc(dirName(d))}</span>`,d===dir,()=>{ dir=d; idx=0; render(); });
+                     el.title=d; return el; }));
+  view=FILES.filter(f=>dir===null||f.sub===dir).slice(0,300);
   if(idx>=view.length) idx=0;
-  listEl.innerHTML=view.length?'':'<div id="none">該当なし</div>';
-  view.forEach((f,i)=>{
-    const el=document.createElement('div');
-    el.className='it'+(i===idx?' sel':'');
-    el.innerHTML=`<span class="n">${mark(f.name,ts)} <span class="p">${mark(f.sub,ts)}</span></span>`
-               + `<span class="m">${f.mb}MB · ${ago(f.mtime)}</span>`;
-    el.onmousedown=e=>{ e.preventDefault(); pick(i); };
-    el.onmouseenter=()=>{ idx=i; hl(); };
-    listEl.appendChild(el);
-  });
+  filesEl.replaceChildren(...view.map((f,i)=>{
+    const el=row(`<span class="n">${esc(f.name)}${dir===null?` <span class="p">${esc(dirName(f.sub))}</span>`:''}</span>`
+               + `<span class="m">${f.mb}MB · ${ago(f.mtime)}</span>`, false, ()=>{ idx=i; pick(i); });
+    el.title=f.rel; el.onmouseenter=()=>{ idx=i; hl(); };
+    return el;
+  }));
+  if(!view.length) filesEl.innerHTML='<div id="none">該当なし</div>';
+  hl();
 }
 function hl(){
-  [...listEl.children].forEach((el,i)=>el.classList.toggle('sel',i===idx));
-  listEl.children[idx]?.scrollIntoView({block:'nearest'});
+  [...filesEl.children].forEach((el,i)=>el.classList.toggle('sel',i===idx));
+  filesEl.children[idx]?.scrollIntoView({block:'nearest'});
 }
-function pick(i){ const f=view[i]; if(!f) return; label(f.rel); close(); show(f.rel,false); }
-function label(rel){ sel=rel; const f=FILES.find(x=>x.rel===rel); q.value=f?f.name:rel; q.title=rel; }
-function openList(){ listEl.classList.add('on'); q.value=''; idx=0; render(); }
+// 選んでも一覧は開いたまま（続けて別のファイルを見られる）。外側クリック・Esc・ボタンで閉じる
+function pick(i){ const f=view[i]; if(!f) return; label(f.rel); show(f.rel,false); }
+function label(rel){ sel=rel; const f=FILES.find(x=>x.rel===rel); q.textContent=f?f.name:rel; q.title=rel; }
+const isOpen=()=>listEl.classList.contains('on');
+function openList(){
+  const f=FILES.find(x=>x.rel===sel); dir=f?f.sub:null;
+  listEl.classList.add('on'); render();
+  idx=view.findIndex(x=>x.rel===sel); if(idx<0) idx=0; hl();
+  dirsEl.querySelector('.on')?.scrollIntoView({block:'nearest'});
+}
 function close(){ listEl.classList.remove('on'); }
-q.onfocus=openList;
-q.onblur=()=>{ close(); if(sel) label(sel); };
-q.oninput=()=>{ idx=0; render(); };
-q.onkeydown=e=>{
-  if(e.key==='ArrowDown'){ idx=Math.min(idx+1,view.length-1); hl(); e.preventDefault(); }
-  else if(e.key==='ArrowUp'){ idx=Math.max(idx-1,0); hl(); e.preventDefault(); }
-  else if(e.key==='Enter'){ pick(idx); q.blur(); e.preventDefault(); }
-  else if(e.key==='Escape'){ q.blur(); }
-};
+q.onclick=()=>isOpen()?close():openList();
+addEventListener('pointerdown',e=>{ if(isOpen()&&!e.target.closest('.picker')) close(); });
+function listKey(e){
+  if(e.key==='ArrowDown') idx=Math.min(idx+1,view.length-1);
+  else if(e.key==='ArrowUp') idx=Math.max(idx-1,0);
+  else if(e.key==='Enter'){ pick(idx); return true; }
+  else if(e.key==='Escape'){ close(); return true; }
+  else return false;
+  hl(); return true;
+}
 $('rescan').onclick=()=>scan(true);
 $('recent').onchange=()=>scan(true);
 function selectRel(rel){ if(!FILES.some(f=>f.rel===rel)) return false; label(rel); show(rel,false); return true; }
@@ -463,14 +475,14 @@ function fitView(dir){
   persp.near=Math.max(0.02,r*0.02); persp.far=r*400; persp.updateProjectionMatrix();
   ortho.near=-r*40; ortho.far=r*400; ortho.updateProjectionMatrix();
   orthoH=r*2.3; ortho.zoom=1;
-  ctl.target.set(0,0,modelSize.z/2);
+  ctl.target.set(0,0,modelSize.z/2); cam.up.set(0,0,1);
   const d=safeDir(dir||new THREE.Vector3(-0.45,-0.85,0.62));
   cam.position.copy(ctl.target).addScaledVector(d,dist());
   ctl.minDistance=r*0.1; ctl.maxDistance=r*60;
   anim=null; resize(); ctl.update();
 }
 function viewFrom(x,y,z){
-  ctl.target.set(0,0,modelSize.z/2);
+  ctl.target.set(0,0,modelSize.z/2); cam.up.set(0,0,1);   // 定位置の視点は上＝Zに戻す
   anim={from:cam.position.clone().sub(ctl.target), to:safeDir(new THREE.Vector3(x,y,z)).multiplyScalar(dist()),
         t:ctl.target.clone(), t0:performance.now()};
 }
@@ -587,11 +599,11 @@ function setOrtho(on){
   const t=ctl.target.clone(), off=cam.position.clone().sub(t);
   if(on){
     orthoH=2*off.length()*Math.tan(persp.fov*Math.PI/360);
-    ortho.position.copy(cam.position); ortho.zoom=1; cam=ortho;
+    ortho.position.copy(cam.position); ortho.up.copy(cam.up); ortho.zoom=1; cam=ortho;
   }else{
     const h=orthoH/ortho.zoom;
     persp.position.copy(t).add(off.setLength(h/(2*Math.tan(persp.fov*Math.PI/360))));
-    cam=persp;
+    persp.up.copy(cam.up); cam=persp;
   }
   ctl.dispose(); ctl=mkCtl(cam); ctl.target.copy(t);
   ctl.minDistance=radius()*0.1; ctl.maxDistance=radius()*60;
@@ -644,7 +656,8 @@ $('t-flip').onclick =()=>{ $('flip').checked=!$('flip').checked; applyFlip(); };
 $('helpb').onclick  =()=>$('help').classList.toggle('on');
 
 addEventListener('keydown',e=>{
-  if(e.target===q||e.metaKey||e.ctrlKey||e.altKey) return;
+  if(e.metaKey||e.ctrlKey||e.altKey) return;
+  if(isOpen()&&listKey(e)){ e.preventDefault(); return; }
   const k=e.key.toLowerCase();
   const go={'1':[0,-1,0],'2':[0,1,0],'3':[-1,0,0],'4':[1,0,0],'5':[0,0,1],'6':[0,0,-1]}[k];
   if(go){ viewFrom(...go); return; }
@@ -655,7 +668,7 @@ addEventListener('keydown',e=>{
   else if(k==='g') $('t-grid').click();
   else if(k==='x') $('t-flip').click();
   else if(k==='s') png();
-  else if(k==='/'){ e.preventDefault(); q.focus(); }
+  else if(k==='/'){ e.preventDefault(); q.click(); }
   else if(e.key==='ArrowLeft')  orbitStep('z',-90);
   else if(e.key==='ArrowRight') orbitStep('z',90);
   else if(e.key==='ArrowUp')    orbitStep('x',-90);
@@ -693,7 +706,7 @@ async function afterLoad(){
   if(newest) selectRel(newest.rel);
 }
 async function useDir(d){
-  DIR=d; await idbSet(d);
+  MODE='fs'; DROPPED=[]; DIR=d; $('pickdir').hidden=false; await idbSet(d);
   $('start').classList.add('off');
   await scan(false); await afterLoad();
 }
@@ -710,7 +723,7 @@ addEventListener('drop',async e=>{
   const it=e.dataTransfer.items[0];
   if(it?.getAsFileSystemHandle){
     const h=await it.getAsFileSystemHandle();
-    if(h?.kind==='directory'){ MODE='fs'; $('pickdir').hidden=false; await useDir(h); return; }
+    if(h?.kind==='directory'){ await useDir(h); return; }
   }
   const fs=[...e.dataTransfer.files].filter(f=>OK_EXT.has(ext(f.name)));
   if(!fs.length) return;
@@ -769,6 +782,7 @@ function resize(){
   persp.aspect=a; persp.updateProjectionMatrix();
   ortho.left=-orthoH*a/2; ortho.right=orthoH*a/2; ortho.top=orthoH/2; ortho.bottom=-orthoH/2;
   ortho.updateProjectionMatrix();
+  ctl.handleResize();
 }
 // デバッグ用の覗き窓（コンソールから mv.root などを触れる）
 window.mv={THREE,scene,root,renderer,get cam(){return cam;},get ctl(){return ctl;}};
