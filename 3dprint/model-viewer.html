@@ -297,6 +297,7 @@ async function bytes(rec){
 }
 async function stamp(rec){
   try{
+    if(rec.url&&MODE==='list') return rec.mtime;
     if(rec.url) return (await (await fetch('/api/stat?f='+encodeURIComponent(rec.rel))).json()).mtime;
     if(rec.handle) return (await rec.handle.getFile()).lastModified;
   }catch{}
@@ -314,7 +315,17 @@ async function walk(dir,prefix,out){
   }
   return out;
 }
+const LIST=new URLSearchParams(location.search).get('list');  // 公開用: 一覧JSONから読む
 async function collect(){
+  if(MODE==='list'){
+    const base=new URL(LIST,location.href);
+    const all=(await (await fetch(base,{cache:'no-store'})).json()).map(f=>{
+      const i=f.rel.lastIndexOf('/');
+      return {...f,name:f.rel.slice(i+1),sub:i<0?'':f.rel.slice(0,i),
+        url:new URL(f.rel.split('/').map(encodeURIComponent).join('/'),base).href};
+    });
+    return [all,all.length];
+  }
   if(MODE==='server'){
     const days=$('recent').checked?30:0;
     const d=await (await fetch('/api/list?days='+days,{cache:'no-store'})).json();
@@ -755,12 +766,13 @@ addEventListener('drop',async e=>{
   await scan(false); if(FILES[0]) selectRel(FILES[0].rel);
 });
 
-try{
+if(LIST){ MODE='list'; $('recent').checked=false; $('recent').parentElement.hidden=true; }
+else try{
   const r=await fetch('/api/list?days=30',{cache:'no-store'});
   const d=r.ok?await r.json():null;
   if(d&&d.files) MODE='server';
 }catch{}
-if(MODE==='server'){
+if(MODE!=='fs'){
   await scan(false); await afterLoad();
 }else{
   $('pickdir').hidden=false;

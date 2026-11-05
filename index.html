@@ -71,6 +71,11 @@
   .tool-btn:active { transform: translateY(0); }
   .tool-btn .ico { font-size: 1.4em; }
   .tool-btn .desc { font-size: 0.75em; color: #9aa0ab; font-weight: normal; margin-top: 2px; }
+  /* PC・タブレットではボタンを2列に */
+  @media (min-width: 768px) {
+    .category { max-width: 960px; }
+    .category-body { display: grid; grid-template-columns: 1fr 1fr; }
+  }
 </style>
 </head>
 <body>
@@ -126,6 +131,13 @@
       <div>
         <div>3Dモデルビューア</div>
         <div class="desc">フォルダごと一覧してSTL／3MF／OBJ／STEPを表示</div>
+      </div>
+    </a>
+    <a class="tool-btn" href="3dprint/model-viewer.html?list=preview/models.json">
+      <span class="ico">👀</span>
+      <div>
+        <div>モデルプレビュー</div>
+        <div class="desc">確認してほしいSTL／STEPを置いて見てもらう場所</div>
       </div>
     </a>
     <a class="tool-btn" href="3dprint/diffuser-stick-spread.html">
